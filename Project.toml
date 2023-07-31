@@ -1,0 +1,13 @@
+name = "DiffusionModels"
+uuid = "e6f4c133-6073-45d8-99fb-465e9f65e59c"
+authors = ["Sam <samb-t@hotmail.co.uk> and contributors"]
+version = "1.0.0-DEV"
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
