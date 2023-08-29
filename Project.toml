@@ -1,13 +1,29 @@
 name = "DiffusionModels"
 uuid = "e6f4c133-6073-45d8-99fb-465e9f65e59c"
-authors = ["Sam <samb-t@hotmail.co.uk> and contributors"]
-version = "1.0.0-DEV"
+authors = ["Sam Bond-Taylor and contributors"]
+version = "0.0.0-DEV"
+
+[deps]
+DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
+MLUtils = "f1d291b0-491e-4a28-83b9-f70985020b54"
+NNlib = "872c559c-99b0-510c-b3b7-b6c96a88d5cd"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+ProtoStructs = "437b6fc4-8e8e-11e9-3fa1-ad391e66c018"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
 julia = "1"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
+Fluxperimental = "3102ee7a-c841-4564-8f7f-ec69bd4fd658"
 
 [targets]
 test = ["Test"]
+models = ["Flux", "Fluxperimental"]
