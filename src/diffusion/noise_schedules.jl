@@ -22,11 +22,11 @@ end
 # Schedules from "On the Importance of Noise Scheduling for Diffusion Models"
 # Which are similar to Simple Diffusion, but more hyperparams.
 # TODO: Add SNR scaling from this paper and Simple Diffusion
-@kwdef struct CosineSchedule <: VPNoiseSchedule
-    t_start=0.0
-    t_end=1.0
-    tau=1.0
-    clip_min=1e-9
+@kwdef struct CosineSchedule{T<:AbstractFloat} <: VPNoiseSchedule
+    t_start::T=0.0
+    t_end::T=1.0
+    tau::T=1.0
+    clip_min::T=1e-9
 end
 
 function alpha_cumulative(schedule::CosineSchedule, t::AbstractFloat)
@@ -46,11 +46,11 @@ function beta(schedule::CosineSchedule, t::AbstractFloat)
     return convert(typeof(t), output)
 end
 
-@kwdef struct SigmoidSchedule <: VPNoiseSchedule
-    t_start=-3.0
-    t_end=3.0
-    tau=1.0
-    clip_min=1e-9
+@kwdef struct SigmoidSchedule{T<:AbstractFloat} <: VPNoiseSchedule
+    t_start::T=-3.0
+    t_end::T=3.0
+    tau::T=1.0
+    clip_min::T=1e-9
 end
 
 function alpha_cumulative(schedule::SigmoidSchedule, t::AbstractFloat)
@@ -69,10 +69,10 @@ function beta(schedule::SigmoidSchedule, t::AbstractFloat)
 end
 
 
-@kwdef struct LinearSchedule <: VPNoiseSchedule
-    beta_start=0.1
-    beta_end=20
-    clip_min=1e-9
+@kwdef struct LinearSchedule{T<:AbstractFloat} <: VPNoiseSchedule
+    beta_start::T=0.1
+    beta_end::T=20
+    clip_min::T=1e-9
 end
 
 function alpha_cumulative(schedule::LinearSchedule, t::AbstractFloat)
@@ -92,7 +92,7 @@ end
 # This is also the schedule used in Absorbing Diffusion
 # Originally from "Deep unsuper-vised learning using nonequilibrium thermodynamics"
 struct LinearMutualInfoSchedule <: VPNoiseSchedule
-    clip_min
+    clip_min::AbstractFloat
 end
 
 LinearMutualInfoSchedule(; clip_min=1e-9) = LinearMutualInfoSchedule(clip_min)

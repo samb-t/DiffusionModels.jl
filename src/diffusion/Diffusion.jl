@@ -1,14 +1,21 @@
 module Diffusion
 
-using ProtoStructs # TODO: Remove protostructs
+# using ProtoStructs # TODO: Remove protostructs
+# TODO: Use RedefStructs?
 using Distributions
 using Random
 using MLUtils
 using NNlib
 # using Flux # TODO: Remove Flux calls
-using DifferentialEquations
+# using DifferentialEquations
 import Statistics.var
 import Base.rand
+using StochasticDiffEq
+using OrdinaryDiffEq
+using JumpProcesses
+using OptimalTransport # TODO: Request bump in NNLib version in OptimalTransport.jl
+using Distances: SqEuclidean
+using StatsBase: ProbabilityWeights
 using RecursiveArrayTools
 
 # TODO: Replace with AbstractFFTs then let the user import a specific library
@@ -17,9 +24,7 @@ using RecursiveArrayTools
 using FFTW # TODO: Make optional dependency (for blurred diffusion)
 
 export AbstractDiffusion, AbstractContinuousTimeDiffusion, AbstractDiscreteTimeDiffusion, AbstractGaussianDiffusion, AbstractCategoricalDiffusion
-
 export AbstractSchedule, AbstractNoiseSchedule, VPNoiseSchedule, CosineSchedule, SigmoidSchedule, LinearSchedule, LinearMutualInfoSchedule
-
 export VPDiffusion, VEDiffusion, CriticallyDampedDiffusion, BlurringDiffusion, DimensionalJumpDiffusion
 export FrequencySchedule
 export ConstantJumpSchedule, rate, rate_integral
@@ -27,6 +32,7 @@ export get_drift_diffusion, marginal, sample_prior, set_score_fn, get_forward_sd
 export get_jump, get_forward_diffeq
 export transition, sample, encode
 export MDNormal
+export alpha_cumulative, beta
 
 include("base.jl")
 include("noise_schedules.jl")
