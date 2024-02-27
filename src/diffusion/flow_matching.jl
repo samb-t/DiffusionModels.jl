@@ -26,8 +26,22 @@ function conditional_vector_field(
     x_start::AbstractArray, 
     x_end::AbstractArray, 
     t::AbstractVector,
+    x_t::AbstractArray
 )
     return x_end .- x_start
+end
+
+function loss(
+    d::LinearCFM,
+    x_start::AbstractArray, 
+    x_end::AbstractArray, 
+    t::AbstractVector,
+)
+    eps = randn!(similar(x_start))
+    x_t = marginal(d, x_start, x_end, t)
+    x_t = x_t.mean .+ x_t.std .* eps
+    u_t = conditional_vector_field(d, x_start, x_end, t, x_t)
+    t, x_t, u_t, eps
 end
 
 
@@ -79,8 +93,34 @@ struct ExactOptimalTransportCFM{T<:AbstractFloat} <: AbstractCFM
     ot_sampler::OTPlanSampler
 end
 
+function marginal(
+    d::ExactOptimalTransportCFM, 
+    x_start::AbstractArray, 
+    x_end::AbstractArray, 
+    t::AbstractVector,
+)
+    # shape = tuple([1 for _ in 1:ndims(x_start)-1]..., length(t))
+    # t = reshape(t, shape)
+    # mean = t .* x_start .+ (1 .- t) .* x_end
+    # return MdNormal(mean, d.sigma)
+end
+
+function conditional_vector_field(
+    d::ExactOptimalTransportCFM,
+    x_start::AbstractArray, 
+    x_end::AbstractArray, 
+    t::AbstractVector,
+)
+    # return x_end .- x_start
+end
 
 
+
+function reparameterise_rand(
+    d::MdNormal
+)
+    ...
+end
 
 
 # function marginal(d::CFM, x_start::AbstractArray, x_end::AbstractArray, t::AbstractVector)
