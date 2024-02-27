@@ -72,6 +72,7 @@ struct VEDiffusion{T} <: AbstractGaussianDiffusion
     schedule::VENoiseSchedule
     score_fn::T
 end
+
 function VEDiffusion(schedule::VENoiseSchedule; score_fn::T=nothing) where T
     VEDiffusion{T}(schedule, score_fn)
 end
