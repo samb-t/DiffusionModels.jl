@@ -3,6 +3,7 @@ abstract type AbstractNoiseSchedule <: AbstractSchedule end
 abstract type VPNoiseSchedule <: AbstractNoiseSchedule end
 abstract type VENoiseSchedule <: AbstractNoiseSchedule end
 
+# TODO: Just do alpha, sigma, and e.g. log SNR
 
 function alpha_cumulative(schedule::AbstractNoiseSchedule, t::AbstractArray)
     alpha_cum(t::AbstractFloat) = alpha_cumulative(schedule, t)
@@ -42,7 +43,7 @@ end
 # To make sure there are no singularities
 # Since e.g. for improved diffusion they set t_min=0.008 (and t_max=1.008??)
 function beta(schedule::CosineSchedule, t::AbstractFloat)
-    output = clamp(π * schedule.tau * tan(π * t / 2), 0, 999) 
+    output = clamp(π * schedule.tau * tan(π * t / 2), 0, 999)
     return convert(typeof(t), output)
 end
 

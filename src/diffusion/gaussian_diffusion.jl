@@ -9,22 +9,22 @@
     Variance Preserving diffusion process from [1] defined in SDE form as
                     dxₜ = -0.5β(t)x dt + √(β(t)) dw               (Eqn. 11 in [2])
     The variance is "preseved" throughout since xₜ = √ᾱ(t)⋅x₀ + √(1-ᾱ(t))⋅z.
-    
-    For ᾱ(t) = ∫₀ᵗ (1-β(t̄))dt̄, if ᾱ(0)=1 and ᾱ(1)=0 then the process is 
-    defined in finite time and becomes an instance of the stochastic 
+
+    For ᾱ(t) = ∫₀ᵗ (1-β(t̄))dt̄, if ᾱ(0)=1 and ᾱ(1)=0 then the process is
+    defined in finite time and becomes an instance of the stochastic
     interpolants framework.
 
     Args:
         `schedule::VPNoiseSchedule`: A variance preserving noise schedule.
         `score_fn` (optional): The score function ∇log p(xₜ).
 
-    [1] Denoising Diffusion Probabilistic Models. 
+    [1] Denoising Diffusion Probabilistic Models.
         Ho et al. NeurIPS 2020.
     [2] Score-Based Generative Modeling Through Stochastic Differential Equations.
         Song et al. ICLR 2021.
 """
-struct VPDiffusion{T} <: AbstractGaussianDiffusion
-    schedule::VPNoiseSchedule
+struct VPDiffusion{S<:VPNoiseSchedule,T} <: AbstractGaussianDiffusion
+    schedule::S
     score_fn::T
 end
 
@@ -32,7 +32,6 @@ function VPDiffusion(schedule::VPNoiseSchedule; score_fn::T=nothing) where T
     VPDiffusion{T}(schedule, score_fn)
 end
 
-# TODO: Should this get returned as an instance of SDEFunction? Does it matter?
 function get_drift_diffusion(d::VPDiffusion)
     drift(x,p,t) = -0.5 * beta(d.schedule, t) .* x
     diffusion(x,p,t) = sqrt(beta(d.schedule, t))
@@ -63,13 +62,13 @@ end
     Args:
         `schedule::VENoiseSchedule`: A variance exploding noise schedule.
 
-    [1] Generative Modeling by Estimating Gradients of the Data Distribution. 
+    [1] Generative Modeling by Estimating Gradients of the Data Distribution.
         Song and Ermon 2019.
     [2] Score-Based Generative Modeling Through Stochastic Differential Equations.
         Song et al. ICLR 2021.
 """
-struct VEDiffusion{T} <: AbstractGaussianDiffusion
-    schedule::VENoiseSchedule
+struct VEDiffusion{S<:VENoiseSchedule,T} <: AbstractGaussianDiffusion
+    schedule::S
     score_fn::T
 end
 
@@ -99,6 +98,50 @@ end
 
 ### Shared functions ###
 
+function get_diffeq_function(d::AbstractGaussianDiffusion)
+    drift, diffusion = get_drift_diffusion(d)
+    return SDEFunction(drift, diffusion)
+end
+
+function get_forward_diffeq(
+    d::AbstractGaussianDiffusion,
+    x::AbstractArray,
+    tspan::Tuple{AbstractFloat, AbstractFloat},
+)
+    @assert tspan[1] < tspan[2]
+    diffeq_fn = get_diffeq_function(d)
+    prob = SDEProblem(diffeq_fn, x, tspan)
+    return prob
+end
+
+# TODO: But what about ODE samplers? Convert SDE to ODE first?
+# Reverse SDE is also an SDE (Anderson 1982). See Eqn. 6 from Song et al. 2021
+function get_backward_diffeq(
+    d::AbstractGaussianDiffusion,
+    x::AbstractArray,
+    tspan::Tuple{AbstractFloat, AbstractFloat},
+)
+    @assert tspan[1] > tspan[2]
+    @assert !isnothing(d.score_fn)
+    drift, diffusion = get_drift_diffusion(d) # TODO: Change to get_diffeq_function?
+    reverse_drift(x,p,t) = drift(x,p,t) .- diffusion(x,p,t).^2 .* d.score_fn(x,p,t)
+    prob = SDEProblem(drift, diffusion, x, tspan)
+    return prob
+end
+
+
+# Older
+
+function target(
+    d::AbstractGaussianDiffusion,
+    x_start::AbstractArray,
+    x_t::AbstractArray,
+    t::AbstractVector,
+)
+    # target depends on d.score_fn.parameterisation
+    ...
+end
+
 function set_score_fn(d::D, score_fn) where D <: AbstractGaussianDiffusion
     return D(d.schedule, score_fn)
 end
@@ -113,6 +156,7 @@ function get_forward_sde(
     prob = SDEProblem(drift, diffusion, x, tspan)
     return prob
 end
+
 
 # Reverse SDE is also an SDE (Anderson 1982). See Eqn. 6 from Song et al. 2021
 function get_backward_sde(
@@ -143,7 +187,7 @@ end
 # TODO: dt is only for things like EM. For other solvers, want to use
 # reltol, abstol etc. So instead have kwargs for the solver?
 function transition(
-    d::AbstractGaussianDiffusion, 
+    d::AbstractGaussianDiffusion,
     x_t::AbstractArray,
     tspan::Tuple{AbstractFloat, AbstractFloat},
     alg::StochasticDiffEqAlgorithm;
@@ -161,7 +205,7 @@ function transition(
 end
 
 function transition(
-    d::AbstractGaussianDiffusion, 
+    d::AbstractGaussianDiffusion,
     x_t::AbstractArray,
     tspan::Tuple{AbstractFloat, AbstractFloat},
     alg::OrdinaryDiffEqAlgorithm;
@@ -193,18 +237,85 @@ function encode(
 end
 
 function denoising_loss_fn(
-    d::AbstractGaussianDiffusion, 
-    model, 
-    x::AbstractArray; 
-    p=nothing, 
+    d::AbstractGaussianDiffusion,
+    model,
+    x::AbstractArray;
+    p=nothing,
     eps=1f-5,
 )
     t = rand(size(x, ndims(x))) * (1.0 - eps) + eps
     marginal_dist = marginal(d, x, t)
     z = randn!(similar(x))
     perturbed_data = marginal_dist.mean .+ margin.std .* z
-    score = score_fn(s, model, perturbed_data, p, t)
+    score = d.score_fn(s, model, perturbed_data, p, t)
 
     losses = (score .* marginal_dist.std .+ z) .^ 2
     return mean(losses, dims=1:(ndims(losses)-1))
+end
+
+
+# TODO: Surely you want to make sure the diffusion model and the parameterisation have the same schedule?
+# Not completely necessarily tbf, as you sometimes want a different schedule from train time to test time...
+# So maybe actually this is the best way...
+# As it also makes sense for the parameterisations to depend on the schedule, as look at the
+# definitions below.
+
+"""
+    Score ∇ₓlog p(x) ≈ s(xₜ,t,θ) = f(xₜ,t,θ)
+"""
+abstract type AbstractScoreParameterisation <: AbstractModelParameterisation end
+
+"""
+    Predict the noise ϵ
+    s(x,p,t) = -ϵ(x,t,θ)/σₜ
+"""
+struct NoiseScoreParameterisation{S<:AbstractNoiseSchedule} <: AbstractScoreParameterisation
+    schedule::S
+end
+
+function get_target(
+    p::NoiseScoreParameterisation,
+    x_start::AbstractArray,
+    x_t::AbstractArray,
+    t::AbstractVector,
+)
+    ...
+end
+
+"""
+    Predict x₀
+    s(x,p,t) = -σₜ⁻²(x-αₜ⋅̂x(x,p,t))
+"""
+struct StartScoreParameterisation{S<:AbstractNoiseSchedule} <: AbstractScoreParameterisation
+    schedule::S
+end
+
+"""
+    Predict v, defined as
+    v = αₜϵ + σₜx₀
+    s(x,p,t) = -(v(x,p,t)+σₜx)/(αₜσₜ)
+"""
+struct VPredictScoreParameterisation{S<:AbstractNoiseSchedule} <: AbstractScoreParameterisation
+    schedule::S
+end
+
+struct ScoreFunction{F, P} where {P<:AbstractScoreParameterisation}
+    model::F
+    parameterisation::P
+end
+
+function (f::ScoreFunction{F,P})(x,p,t) where {F,P::NoiseScoreParameterisation}
+    return -f.model(x,p,t) ./ sigma(f.parameterisation.schedule, t)
+end
+
+function (f::ScoreFunction{F,P})(x,p,t) where {F,P::StartScoreParameterisation}
+    sigma_t = sigma(f.parameterisation.schedule, t)
+    alpha_t = alpha(f.parameterisation.schedule, t)
+    return -sigma_t.^(-2) .* (x .- alpha_t .* f.model(x,p,t))
+end
+
+function (f::ScoreFunction{F,P})(x,p,t) where {F,P::VPredictScoreParameterisation}
+    sigma_t = sigma(f.schedule, t)
+    alpha_t = alpha(f.schedule, t)
+    return -(f.model(x,p,t) .+ sigma_t) ./ (alpha_t .* sigma_t)
 end

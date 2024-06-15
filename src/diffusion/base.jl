@@ -5,3 +5,5 @@ abstract type AbstractDiscreteTimeDiffusion <: AbstractContinuousTimeDiffusion e
 
 abstract type AbstractGaussianDiffusion <: AbstractDiffusion end
 abstract type AbstractCategoricalDiffusion <: AbstractDiffusion end
+
+abstract type AbstractModelParameterisation end
