@@ -5,98 +5,35 @@
 #       - as SciMLBase.DiscreteProblem
 #       - DiscreteProblem(f::ODEFunction, u0, tspan) is already allowed
 
-"""
-    Variance Preserving diffusion process from [1] defined in SDE form as
-                    dxₜ = -0.5β(t)x dt + √(β(t)) dw               (Eqn. 11 in [2])
-    The variance is "preseved" throughout since xₜ = √ᾱ(t)⋅x₀ + √(1-ᾱ(t))⋅z.
 
-    For ᾱ(t) = ∫₀ᵗ (1-β(t̄))dt̄, if ᾱ(0)=1 and ᾱ(1)=0 then the process is
-    defined in finite time and becomes an instance of the stochastic
-    interpolants framework.
-
-    Args:
-        `schedule::VPNoiseSchedule`: A variance preserving noise schedule.
-        `score_fn` (optional): The score function ∇log p(xₜ).
-
-    [1] Denoising Diffusion Probabilistic Models.
-        Ho et al. NeurIPS 2020.
-    [2] Score-Based Generative Modeling Through Stochastic Differential Equations.
-        Song et al. ICLR 2021.
-"""
-struct VPDiffusion{S<:VPNoiseSchedule,T} <: AbstractGaussianDiffusion
+# TODO: Pop dims and tspan in here and use the @concrete macro?
+struct GaussianDiffusion{S<:AbstractGaussianNoiseSchedule} <: AbstractGaussianDiffusion
     schedule::S
-    score_fn::T
 end
 
-function VPDiffusion(schedule::VPNoiseSchedule; score_fn::T=nothing) where T
-    VPDiffusion{T}(schedule, score_fn)
-end
-
-function get_drift_diffusion(d::VPDiffusion)
-    drift(x,p,t) = -0.5 * beta(d.schedule, t) .* x
-    diffusion(x,p,t) = sqrt(beta(d.schedule, t))
-    return drift, diffusion
-end
-
-function marginal(d::VPDiffusion, x_start::AbstractArray, t::AbstractVector)
+function marginal(d::GaussianDiffusion, x_start::AbstractArray, t::AbstractVector)
     shape = tuple([1 for _ in 1:ndims(x_start)-1]..., length(t))
-    t = reshape(t, shape)
-    mean = sqrt.(alpha_cumulative(d.schedule, t)) .* x_start
-    std = sqrt.(1 .- alpha_cumulative(d.schedule, t))
+
+    mean = marginal_mean_coeff.(Ref(d.schedule), t)
+    std = marginal_std_coeff.(Ref(d.schedule), t)
+
+    mean = reshape(mean, shape)
+    std = reshape(std, shape)
     std = repeat(std, outer=(size(mean)[1:end-1]..., 1))
-    return rand(MdNormal(mean, std))
+
+    return MdNormal(mean, std)
 end
 
-function sample_prior(d::VPDiffusion,  dims::Tuple{Int}; kwargs...)
+# TODO: Not true! For VE Diffusion this is much larger!
+function sample_prior(d::GaussianDiffusion,  dims::Tuple{Int}; kwargs...)
     randn(dims, kwargs...)
 end
 
-# TODO: add score_fn function which wraps the function, e.g divide by std etc?
-
-
-"""
-    Variance Exploding diffusion process from [1] defined in SDE form as
-                            dxₜ = √(∂ₜσ²(t)) dw                    (Eqn. 9 in [2])
-    where the variance "explodes", σ²(t)→∞ as t→∞
-
-    Args:
-        `schedule::VENoiseSchedule`: A variance exploding noise schedule.
-
-    [1] Generative Modeling by Estimating Gradients of the Data Distribution.
-        Song and Ermon 2019.
-    [2] Score-Based Generative Modeling Through Stochastic Differential Equations.
-        Song et al. ICLR 2021.
-"""
-struct VEDiffusion{S<:VENoiseSchedule,T} <: AbstractGaussianDiffusion
-    schedule::S
-    score_fn::T
-end
-
-function VEDiffusion(schedule::VENoiseSchedule; score_fn::T=nothing) where T
-    VEDiffusion{T}(schedule, score_fn)
-end
-
-function get_drift_diffusion(d::VEDiffusion)
-    drift(x,p,t) = 0f0
-    diffusion(x,p,t) = sqrt(beta(d.schedule, t))
+function get_drift_diffusion(d::VPDiffusion)
+    drift(x,p,t) = -0.5 * drift_coeff(d.schedule, t) .* x
+    diffusion(x,p,t) = diffusion_coeff(d.schedule, t)
     return drift, diffusion
 end
-
-function marginal(d::VEDiffusion, x_start::AbstractArray, t::AbstractVector)
-    shape = tuple([1 for _ in 1:ndims(x_start)-1]..., length(t))
-    t = reshape(t, shape)
-    std = alpha_cumulative(d.schedule, t)
-    std = repeat(std, outer=(size(mean)[1:end-1]..., 1))
-    return rand(MdNormal(x_start, std))
-end
-
-function sample_prior(d::VEDiffusion,  dims::Tuple{Int}; kwargs...)
-    randn(dims, kwargs...) .* alpha_cumulative(d.schedule, 1.0)
-end
-
-
-
-### Shared functions ###
 
 function get_diffeq_function(d::AbstractGaussianDiffusion)
     drift, diffusion = get_drift_diffusion(d)
@@ -114,132 +51,41 @@ function get_forward_diffeq(
     return prob
 end
 
-# TODO: But what about ODE samplers? Convert SDE to ODE first?
-# Reverse SDE is also an SDE (Anderson 1982). See Eqn. 6 from Song et al. 2021
 function get_backward_diffeq(
     d::AbstractGaussianDiffusion,
+    score_fn::ScoreFunction,
     x::AbstractArray,
     tspan::Tuple{AbstractFloat, AbstractFloat},
 )
     @assert tspan[1] > tspan[2]
-    @assert !isnothing(d.score_fn)
+    @assert !isnothing(score_fn)
     drift, diffusion = get_drift_diffusion(d) # TODO: Change to get_diffeq_function?
-    reverse_drift(x,p,t) = drift(x,p,t) .- diffusion(x,p,t).^2 .* d.score_fn(x,p,t)
+    reverse_drift(x,p,t) = drift(x,p,t) .- diffusion(x,p,t).^2 .* score_fn(x,p,t)
     prob = SDEProblem(drift, diffusion, x, tspan)
     return prob
-end
-
-
-# Older
-
-function target(
-    d::AbstractGaussianDiffusion,
-    x_start::AbstractArray,
-    x_t::AbstractArray,
-    t::AbstractVector,
-)
-    # target depends on d.score_fn.parameterisation
-    ...
-end
-
-function set_score_fn(d::D, score_fn) where D <: AbstractGaussianDiffusion
-    return D(d.schedule, score_fn)
-end
-
-function get_forward_sde(
-    d::AbstractGaussianDiffusion,
-    x::AbstractArray,
-    tspan::Tuple{AbstractFloat, AbstractFloat},
-)
-    @assert tspan[1] < tspan[2]
-    drift, diffusion = get_drift_diffusion(d)
-    prob = SDEProblem(drift, diffusion, x, tspan)
-    return prob
-end
-
-
-# Reverse SDE is also an SDE (Anderson 1982). See Eqn. 6 from Song et al. 2021
-function get_backward_sde(
-    d::AbstractGaussianDiffusion,
-    x::AbstractArray,
-    tspan::Tuple{AbstractFloat, AbstractFloat},
-)
-    @assert tspan[1] > tspan[2]
-    @assert !isnothing(d.score_fn)
-    drift, diffusion = get_drift_diffusion(d)
-    reverse_drift(x,p,t) = drift(x,p,t) .- diffusion(x,p,t).^2 .* d.score_fn(x,p,t)
-    prob = SDEProblem(drift, diffusion, x, tspan)
-    return prob
-end
-
-function get_ode(
-    d::AbstractGaussianDiffusion,
-    x::AbstractArray,
-    tspan::Tuple{AbstractFloat, AbstractFloat},
-)
-    @assert !isnothing(d.score_fn)
-    drift, diffusion = get_drift_diffusion(d)
-    ode(x,p,t) = drift(x,p,t) - diffusion(x,p,t).^2 .* d.score_fn(x,p,t) .* 0.5
-    prob = ODEProblem(ode, x, tspan)
-    return prob
-end
-
-# TODO: dt is only for things like EM. For other solvers, want to use
-# reltol, abstol etc. So instead have kwargs for the solver?
-function transition(
-    d::AbstractGaussianDiffusion,
-    x_t::AbstractArray,
-    tspan::Tuple{AbstractFloat, AbstractFloat},
-    alg::StochasticDiffEqAlgorithm;
-    kwargs...
-)
-    if tspan[1] < tspan[2]
-        prob = get_forward_sde(d, x_t, tspan)
-    elseif tspan[1] > tspan[2]
-        prob = get_backward_sde(d, x_t, tspan)
-    else
-        throw(Error("TODO: Make proper error"))
-    end
-    sol = solve(prob, alg; kwargs...)
-    return sol.u[end]
-end
-
-function transition(
-    d::AbstractGaussianDiffusion,
-    x_t::AbstractArray,
-    tspan::Tuple{AbstractFloat, AbstractFloat},
-    alg::OrdinaryDiffEqAlgorithm;
-    kwargs...
-)
-    prob = get_ode(d, x_t, tspan)
-    sol = solve(prob, alg; kwargs...)
-    return sol.u[end]
 end
 
 # TODO: dtype and device
+# TODO: Store dims within GaussianDiffusion? I think yes
 function sample(
     d::AbstractGaussianDiffusion,
+    score_fn::ScoreFunction,
     dims::NTuple{N, Int},
     alg::Union{StochasticDiffEqAlgorithm, OrdinaryDiffEqAlgorithm}=EM(),
     kwargs...
 ) where N
     x = sample_prior(d, dims)
-    return transition(d, x, (1,0), alg; kwargs...)
+    prob = get_backward_diffeq(d, score_fn, x, (1,0))
+    sol = solve(prob, alg; kwargs...)
+    return sol
 end
 
-function encode(
-    d::AbstractGaussianDiffusion,
-    x::AbstractArray,
-    alg::OrdinaryDiffEqAlgorithm=Euler(),
-    kwargs...
-)
-    return transition(d, x, (1,0), alg; kwargs...)
-end
-
+# TODO: Don't think you should need to pass in d here. Use
+# score_fn.parameterisation.schedule instead
 function denoising_loss_fn(
     d::AbstractGaussianDiffusion,
-    model,
     x::AbstractArray;
+    score_fn::ScoreFunction;
     p=nothing,
     eps=1f-5,
 )
@@ -247,18 +93,19 @@ function denoising_loss_fn(
     marginal_dist = marginal(d, x, t)
     z = randn!(similar(x))
     perturbed_data = marginal_dist.mean .+ margin.std .* z
-    score = d.score_fn(s, model, perturbed_data, p, t)
 
-    losses = (score .* marginal_dist.std .+ z) .^ 2
+    model = score_fn.model
+    parameterisation = score_fn.parameterisation
+
+    target = get_target(parameterisation, x, z, t)s
+
+    pred = model(perturbed_data, p, t)
+
+    losses = (pred .- target) .^ 2
     return mean(losses, dims=1:(ndims(losses)-1))
 end
 
 
-# TODO: Surely you want to make sure the diffusion model and the parameterisation have the same schedule?
-# Not completely necessarily tbf, as you sometimes want a different schedule from train time to test time...
-# So maybe actually this is the best way...
-# As it also makes sense for the parameterisations to depend on the schedule, as look at the
-# definitions below.
 
 """
     Score ∇ₓlog p(x) ≈ s(xₜ,t,θ) = f(xₜ,t,θ)
@@ -273,13 +120,14 @@ struct NoiseScoreParameterisation{S<:AbstractNoiseSchedule} <: AbstractScorePara
     schedule::S
 end
 
+# For simplicity for now. But some of these args can definitely go away
 function get_target(
-    p::NoiseScoreParameterisation,
+    ::NoiseScoreParameterisation,
     x_start::AbstractArray,
-    x_t::AbstractArray,
+    noise::AbstractArray,
     t::AbstractVector,
 )
-    ...
+    return noise
 end
 
 """
@@ -288,6 +136,15 @@ end
 """
 struct StartScoreParameterisation{S<:AbstractNoiseSchedule} <: AbstractScoreParameterisation
     schedule::S
+end
+
+function get_target(
+    ::StartScoreParameterisation,
+    x_start::AbstractArray,
+    noise::AbstractArray,
+    t::AbstractVector,
+)
+    return x_start
 end
 
 """
@@ -299,23 +156,36 @@ struct VPredictScoreParameterisation{S<:AbstractNoiseSchedule} <: AbstractScoreP
     schedule::S
 end
 
-struct ScoreFunction{F, P} where {P<:AbstractScoreParameterisation}
+function get_target(
+    ::VPredictScoreParameterisation,
+    x_start::AbstractArray,
+    noise::AbstractArray,
+    t::AbstractVector,
+)
+    sigma_t = marginal_std_coeff.(Ref(f.schedule), t)
+    alpha_t = marginal_mean_coeff.(Ref(f.schedule), t)
+    v = alpha_t .* noise .+ sigma_t .* x_start
+    return v
+end
+
+
+struct ScoreFunction{F, P<:AbstractScoreParameterisation}
     model::F
     parameterisation::P
 end
 
 function (f::ScoreFunction{F,P})(x,p,t) where {F,P::NoiseScoreParameterisation}
-    return -f.model(x,p,t) ./ sigma(f.parameterisation.schedule, t)
+    return -f.model(x,p,t) ./ marginal_std_coeff(f.parameterisation.schedule, t)
 end
 
 function (f::ScoreFunction{F,P})(x,p,t) where {F,P::StartScoreParameterisation}
-    sigma_t = sigma(f.parameterisation.schedule, t)
-    alpha_t = alpha(f.parameterisation.schedule, t)
+    sigma_t = marginal_std_coeff(f.parameterisation.schedule, t)
+    alpha_t = marginal_mean_coeff(f.parameterisation.schedule, t)
     return -sigma_t.^(-2) .* (x .- alpha_t .* f.model(x,p,t))
 end
 
 function (f::ScoreFunction{F,P})(x,p,t) where {F,P::VPredictScoreParameterisation}
-    sigma_t = sigma(f.schedule, t)
-    alpha_t = alpha(f.schedule, t)
+    sigma_t = marginal_std_coeff(f.parameterisation.schedule, t)
+    alpha_t = marginal_mean_coeff(f.parameterisation.schedule, t)
     return -(f.model(x,p,t) .+ sigma_t) ./ (alpha_t .* sigma_t)
 end

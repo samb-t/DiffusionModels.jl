@@ -9,7 +9,7 @@
 """
     Absorbing Diffusion Models
 """
-struct CategoricalDiffusion <: CategoricalDiffusion
+struct AbsorbingDiffusion <: AbstractDiscreteDiffusion
     ...
 end
 

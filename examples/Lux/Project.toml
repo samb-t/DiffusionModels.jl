@@ -1,0 +1,4 @@
+[deps]
+DiffusionModels = "e6f4c133-6073-45d8-99fb-465e9f65e59c"
+Lux = "b2108857-7c20-44ae-9111-449ecde12c47"
+Optimisers = "3bd65402-5787-11e9-1adc-39752487f4e2"

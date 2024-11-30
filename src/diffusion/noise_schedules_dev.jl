@@ -1,7 +1,8 @@
 abstract type AbstractSchedule end
 abstract type AbstractNoiseSchedule <: AbstractSchedule end
-abstract type VPNoiseSchedule <: AbstractNoiseSchedule end
-abstract type VENoiseSchedule <: AbstractNoiseSchedule end
+abstract type AbstractGaussianNoiseSchedule <: AbstractNoiseSchedule end
+abstract type VPNoiseSchedule <: AbstractGaussianNoiseSchedule end
+abstract type VENoiseSchedule <: AbstractGaussianNoiseSchedule end
 
 """
     Define in terms of marginal distribution
@@ -24,6 +25,10 @@ abstract type VENoiseSchedule <: AbstractNoiseSchedule end
     For the VP case,
         f(x, t) = -0.5 β(t) x    and    g(t) = β(t)
 """
+
+
+# TODO: If these funcs end up being used for non-gaussian schedules,
+# give them some more general names
 
 # TODO: Add necessary clipping to all coefficients
 
