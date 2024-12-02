@@ -121,18 +121,18 @@ function beta(s::CosineSchedule, t::AbstractFloat)
 end
 
 
-
-
 @kwdef struct LinearSchedule{T<:AbstractFloat} <: VPNoiseSchedule
     beta_start::T=0.1
-    beta_end::T=20
+    beta_end::T=20.0
     clip_min::T=1e-9
 end
 
-# TODO: Surely this is wrong and needs to use beta_start and beta_end ...
-# function log_snr(s::LinearSchedule, t::AbstractFloat)
-#     return -log(exp(t ^ 2 - 1))
-# end
+# TODO: Can this be simplified?
+function log_snr(s::LinearSchedule, t::AbstractFloat)
+    alpha_bar = exp(-0.5 * t ^ 2 * (s.beta_end - s.beta_start) - t * s.beta_start)
+    snr = alpha_bar / (1 - alpha_bar)
+    return log(snr)
+end
 
 function beta(s::LinearSchedule, t::AbstractFloat)
     return schedule.beta_start + t * (schedule.beta_end - schedule.beta_start)

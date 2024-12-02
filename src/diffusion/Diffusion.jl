@@ -24,8 +24,19 @@ using RequiredInterfaces
 # TODO: Support DCT on GPU if available
 # using FFTW # TODO: Make optional dependency (for blurred diffusion)
 
-export AbstractDiffusion, AbstractContinuousTimeDiffusion, AbstractDiscreteTimeDiffusion, AbstractGaussianDiffusion, AbstractCategoricalDiffusion
-export AbstractSchedule, AbstractNoiseSchedule, AbstractGaussianNoiseSchedule, VPNoiseSchedule, CosineSchedule, LinearSchedule#, SigmoidSchedule, LinearMutualInfoSchedule
+export AbstractDiffusion
+export AbstractContinuousTimeDiffusion
+export AbstractDiscreteTimeDiffusion
+export AbstractGaussianDiffusion
+export AbstractCategoricalDiffusion
+
+export AbstractSchedule
+export AbstractNoiseSchedule
+export AbstractGaussianNoiseSchedule
+export VPNoiseSchedule
+export CosineSchedule
+export LinearSchedule
+#, SigmoidSchedule, LinearMutualInfoSchedule
 
 export GaussianDiffusion
 export CriticallyDampedDiffusion
