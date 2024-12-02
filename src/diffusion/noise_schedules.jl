@@ -1,73 +1,126 @@
 abstract type AbstractSchedule end
 abstract type AbstractNoiseSchedule <: AbstractSchedule end
-abstract type VPNoiseSchedule <: AbstractNoiseSchedule end
-abstract type VENoiseSchedule <: AbstractNoiseSchedule end
+abstract type AbstractGaussianNoiseSchedule <: AbstractNoiseSchedule end
+abstract type VPNoiseSchedule <: AbstractGaussianNoiseSchedule end
+abstract type VENoiseSchedule <: AbstractGaussianNoiseSchedule end
 
-# TODO: Just do alpha, sigma, and e.g. log SNR
+# Define interface for gaussian noise schedules
+function marginal_mean_coeff end
+function marginal_std_coeff end
+function drift_coeff end
+function diffusion_coeff end
+function log_snr end
+function beta end
 
-function alpha_cumulative(schedule::AbstractNoiseSchedule, t::AbstractArray)
-    alpha_cum(t::AbstractFloat) = alpha_cumulative(schedule, t)
-    return alpha_cum.(t)
+@required AbstractGaussianNoiseSchedule begin
+    marginal_mean_coeff(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
+    marginal_std_coeff(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
+    drift_coeff(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
+    diffusion_coeff(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
+    log_snr(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
+    beta(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
 end
 
-function beta(schedule::AbstractNoiseSchedule, t::AbstractArray)
-    beta_this(t::AbstractFloat) = beta(schedule, t)
-    return beta_this.(t)
+function marginal_mean_coeff(::AbstractGaussianNoiseSchedule, ::AbstractVector)
+    return marginal_mean_coeff.(Ref(s), t)
+end
+
+function marginal_std_coeff(::AbstractGaussianNoiseSchedule, t::AbstractVector)
+    return marginal_std_coeff.(Ref(s), t)
 end
 
 
-# TODO: I'm really not sure on the squaring at the end of the sigmoid and CosineSchedule
-# schedules. Have a strong feeling it's not necessary. E.g. for Cosine, there's already
-# a square in there. Not sure about for sigmoid though
+"""
+    Define in terms of marginal distribution
+        x_t = αₜ⋅x₀ + σₜ⋅ϵ
 
-# Schedules from "On the Importance of Noise Scheduling for Diffusion Models"
-# Which are similar to Simple Diffusion, but more hyperparams.
-# TODO: Add SNR scaling from this paper and Simple Diffusion
+    log-SNR at time t is
+        λₜ = log(αₜ²/σₜ²)
+
+    A variance preserving (VP) forward process can be defined either
+    in terms of α and σ, or from the log-SNR as
+        αₜ² = sigmoid(λₜ)   and   σₜ² = sigmoid(-λₜ)
+    By default we define the log-SNR, but you can add a new noise schedule
+    by defining α and σ instead.
+
+    For the SDE we define
+        dx = f(x, t)dt + g(t) dw
+    These can be defined using β(t)
+        β(t) = d/dt log(1 + e^{-λₜ})
+
+    For the VP case,
+        f(x, t) = -0.5 β(t) x    and    g(t) = β(t)
+"""
+
+
+# TODO: If these funcs end up being used for non-gaussian schedules,
+# give them some more general names
+
+# TODO: Add necessary clipping to all coefficients
+
+# TODO: Square root in the SDE? APplies to both VP and VE
+function marginal_mean_coeff(s::VPNoiseSchedule, t::AbstractFloat)
+    λₜ = log_snr(s::VPNoiseSchedule, t)
+    return sqrt(sigmoid(λₜ))
+end
+
+function marginal_std_coeff(s::VPNoiseSchedule, t::AbstractFloat)
+    λₜ = log_snr(s::VPNoiseSchedule, t)
+    return sqrt(sigmoid(-λₜ))
+end
+
+function marginal_mean_coeff(::VENoiseSchedule, t::AbstractFloat)
+    return 1
+end
+
+function marginal_std_coeff(s::VENoiseSchedule, t::AbstractFloat)
+    λₜ = log_snr(s::VPNoiseSchedule, t)
+    return sqrt(exp(-λₜ))
+end
+
+# TODO: Add a default beta function that applies to both VE and VP
+# and calculates β(t) = d/dt log(1 + e^{-λₜ}) with automatic symbolic
+# differentiation
+
+
+# TODO: Think of better names than drift/diffusion so it makes more sense
+# to apply to the discrete state space too.
+function drift_coeff(s::VPNoiseSchedule, t::AbstractFloat)
+    return -0.5 * beta(s, t)
+end
+
+function diffusion_coeff(s::VPNoiseSchedule, t::AbstractFloat)
+    return sqrt(beta(s, t))
+end
+
+function drift_coeff(s::VENoiseSchedule, t::AbstractFloat)
+    return 0
+end
+
+function diffusion_coeff(s::VENoiseSchedule, t::AbstractFloat)
+    sqrt(beta(s, t))
+end
+
+
 @kwdef struct CosineSchedule{T<:AbstractFloat} <: VPNoiseSchedule
     t_start::T=0.0
     t_end::T=1.0
     tau::T=1.0
     clip_min::T=1e-9
+    # shift::T=0.0
 end
 
-function alpha_cumulative(schedule::CosineSchedule, t::AbstractFloat)
-    v_start = cos(schedule.t_start * π / 2) ^ (2 * schedule.tau)
-    v_end = cos(schedule.t_end * π / 2) ^ (2 * schedule.tau)
-    output = cos((t * (schedule.t_end - schedule.t_start) + schedule.t_start) * π / 2) ^ (2 * schedule.tau)
-    output = (v_end - output) / (v_end - v_start)
-    output = clamp(output, schedule.clip_min, 1)
-    return convert(typeof(t), output)
+# TODO: Use beta in here instead
+function log_snr(s::CosineSchedule, t::AbstractFloat)
+    return -2 * log(tan(π * t / 2)) # + 2 * s.shift
 end
 
-# TODO: Do this when t_start, t_end, tau, etc are all used
-# To make sure there are no singularities
-# Since e.g. for improved diffusion they set t_min=0.008 (and t_max=1.008??)
-function beta(schedule::CosineSchedule, t::AbstractFloat)
-    output = clamp(π * schedule.tau * tan(π * t / 2), 0, 999)
-    return convert(typeof(t), output)
+# TODO: use shift in here
+function beta(s::CosineSchedule, t::AbstractFloat)
+    return π * s.tau * tan(π * t / 2)
 end
 
-@kwdef struct SigmoidSchedule{T<:AbstractFloat} <: VPNoiseSchedule
-    t_start::T=-3.0
-    t_end::T=3.0
-    tau::T=1.0
-    clip_min::T=1e-9
-end
 
-function alpha_cumulative(schedule::SigmoidSchedule, t::AbstractFloat)
-    v_start = sigmoid(schedule.t_start / schedule.tau)
-    v_end = sigmoid(schedule.t_end / schedule.tau)
-    output = sigmoid((t * (schedule.t_end - schedule.t_start) + schedule.t_start) / schedule.tau)
-    output = (v_end - output) / (v_end - v_start)
-    output = clamp(output, schedule.clip_min, 1)
-    return convert(typeof(t), output)
-end
-
-# TODO: Add tau
-function beta(schedule::SigmoidSchedule, t::AbstractFloat)
-    output = (schedule.t_end - schedule.t_start) - (schedule.t_end - schedule.t_start) / (1 + exp(t * (schedule.t_end - schedule.t_start) + schedule.t_start))
-    return convert(typeof(t), output)
-end
 
 
 @kwdef struct LinearSchedule{T<:AbstractFloat} <: VPNoiseSchedule
@@ -76,77 +129,22 @@ end
     clip_min::T=1e-9
 end
 
-function alpha_cumulative(schedule::LinearSchedule, t::AbstractFloat)
-    log_mean_coeff = -0.5 * t ^ 2 * (schedule.beta_end - schedule.beta_start) - t * schedule.beta_start
-    output = exp(log_mean_coeff)
-    output = clamp(output, schedule.clip_min, 1)
-    return convert(typeof(t), output)
-end
+# TODO: Surely this is wrong and needs to use beta_start and beta_end ...
+# function log_snr(s::LinearSchedule, t::AbstractFloat)
+#     return -log(exp(t ^ 2 - 1))
+# end
 
-function beta(schedule::LinearSchedule, t::AbstractFloat)
-    beta_t = schedule.beta_start + t * (schedule.beta_end - schedule.beta_start)
-    return convert(typeof(t), beta_t)
+function beta(s::LinearSchedule, t::AbstractFloat)
+    return schedule.beta_start + t * (schedule.beta_end - schedule.beta_start)
 end
 
 
-# Used in "On the Importance of Noise Scheduling for Diffusion Models"
-# This is also the schedule used in Absorbing Diffusion
-# Originally from "Deep unsuper-vised learning using nonequilibrium thermodynamics"
-struct LinearMutualInfoSchedule <: VPNoiseSchedule
-    clip_min::AbstractFloat
-end
-
-LinearMutualInfoSchedule(; clip_min=1e-9) = LinearMutualInfoSchedule(clip_min)
-
-function alpha_cumulative(schedule::LinearMutualInfoSchedule, t::AbstractFloat)
-    output = 1-t
-    output = clamp(output, schedule.clip_min, 1)
-    return convert(typeof(t), output)
-end
-
-function beta(schedule::LinearMutualInfoSchedule, t::AbstractFloat)
-    output = 1 / (1 - t)
-    return convert(typeof(t), output)
-end
-
-
-# TODO: Learned noise schedule from Variational Diffusion Models
-
-
-## Frequency Schedules #
-
-# TODO: Support various numbers of dims to blur. Not only images
-@kwdef struct FrequencySchedule
-    schedule::VPNoiseSchedule
-    sigma_max_blur::AbstractFloat
-    img_dim::Int
-    min_scale::AbstractFloat=0.001
-end
-
-# function alpha_cumulative(s::FrequencySchedule, t::AbstractFloat)
-#     # compute dissipation time
-#     sigma_blur = s.sigma_max_blur * (1 - alpha_cumulative(s.schedule, t))
-#     dissipation_time = sigma_blur ^ 2 / 2
-
-#     # frequencies
-#     freq = π .* collect(0:(s.img_dim - 1)) ./ s.img_dim
-#     lambda = reshape(freq, (s.img_dim,1,1)).^2 + reshape(freq, (1,s.img_dim,1)).^2
+# TODO: Add EDM Schedule from Karras et al. 2022
+# NOTE: This schedule is different at train and sampling time
+# @kwdef struct EDMTrainSchedule{T<:AbstractFloat} <: VENoiseSchedule
 
 # end
 
-function alpha_cumulative(s::FrequencySchedule, t::AbstractArray)
-    # compute dissipation time
-    sigma_blur = s.sigma_max_blur .* (1 .- alpha_cumulative(s.schedule, t))
-    dissipation_time = sigma_blur .^ 2 ./ 2
-
-    # frequencies
-    freq = π .* collect(0:(s.img_dim - 1)) ./ s.img_dim
-    lambda = reshape(freq, (s.img_dim,1,1,1)).^2 .+ reshape(freq, (1,s.img_dim,1,1)).^2
-
-    # compute scaling for frequencies
-    scaling = exp.(-lambda .* dissipation_time) .* (1 .- s.min_scale)
-    return scaling .+ s.min_scale
-end
 
 
 
@@ -178,5 +176,5 @@ end
 
 function rate(schedule::AbstractNoiseSchedule, t::AbstractArray)
     rate_this(t::AbstractFloat) = rate(schedule, t)
-    return rate_this.(t)
+    return rate_t
 end

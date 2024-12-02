@@ -1,3 +1,4 @@
 /Manifest.toml
 examples/*/Manifest.toml
+test/Manifest.toml
 .vscode/settings.json

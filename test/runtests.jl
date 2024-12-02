@@ -1,5 +1,8 @@
-using DiffusionModels
 using Test
+using DiffusionModels
+
+include("jet_helper.jl")
+include("test_gaussian_diffusion.jl")
 
 # @testset "DiffusionModels.jl" begin
 #     # Write your tests here.
