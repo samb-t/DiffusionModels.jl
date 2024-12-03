@@ -11,6 +11,10 @@
 """
 abstract type AbstractScoreParameterisation <: AbstractModelParameterisation end
 
+@required AbstractScoreParameterisation begin
+    get_target(::AbstractScoreParameterisation, ::AbstractArray, ::AbstractArray, ::AbstractVector)
+end
+
 """
     Predict the noise ϵ
     s(x,p,t) = -ϵ(x,t,θ)/σₜ
@@ -56,13 +60,16 @@ struct VPredictScoreParameterisation{S<:AbstractNoiseSchedule} <: AbstractScoreP
 end
 
 function get_target(
-    ::VPredictScoreParameterisation,
+    parameterisation::VPredictScoreParameterisation,
     x_start::AbstractArray,
     noise::AbstractArray,
     t::AbstractVector,
 )
-    sigma_t = marginal_std_coeff.(f.schedule, t)
-    alpha_t = marginal_mean_coeff.(f.schedule, t)
+    shape = ((1 for _ in 1:ndims(x_start)-1)..., length(t))
+    sigma_t = marginal_std_coeff(parameterisation.schedule, t)
+    alpha_t = marginal_mean_coeff(parameterisation.schedule, t)
+    sigma_t = reshape(sigma_t, shape)
+    alpha_t = reshape(alpha_t, shape)
     v = alpha_t .* noise .+ sigma_t .* x_start
     return v
 end
@@ -141,10 +148,10 @@ end
 
 function get_backward_diffeq(
     d::AbstractGaussianDiffusion,
-    score_fn::ScoreFunction,
+    score_fn::ScoreFunction{F,P},
     x::AbstractArray,
     tspan::Tuple{AbstractFloat, AbstractFloat},
-)
+) where {F,P}
     @assert tspan[1] > tspan[2]
     @assert !isnothing(score_fn)
     drift, diffusion = get_drift_diffusion(d) # TODO: Change to get_diffeq_function?
@@ -157,11 +164,11 @@ end
 # TODO: Store dims within GaussianDiffusion? I think yes
 function sample(
     d::AbstractGaussianDiffusion,
-    score_fn::ScoreFunction,
+    score_fn::ScoreFunction{F,P},
     dims::NTuple{N, Int},
     alg::StochasticDiffEqAlgorithm=EM(),
     kwargs...
-) where N
+) where {F,P,N}
     x = sample_prior(d, dims)
     prob = get_backward_diffeq(d, score_fn, x, (1,0))
     sol = solve(prob, alg; kwargs...)
@@ -173,10 +180,10 @@ end
 function denoising_loss_fn(
     d::AbstractGaussianDiffusion,
     x::AbstractArray,
-    score_fn::ScoreFunction;
+    score_fn::ScoreFunction{F,P};
     p=nothing,
     eps=1f-5,
-)
+) where {F,P}
     t = rand(size(x, ndims(x))) * (1.0 - eps) + eps
     marginal_dist = marginal(d, x, t)
     z = randn!(similar(x))

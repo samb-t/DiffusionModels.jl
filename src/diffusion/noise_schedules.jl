@@ -21,11 +21,11 @@ function beta end
     # beta(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
 end
 
-function marginal_mean_coeff(::AbstractGaussianNoiseSchedule, ::AbstractVector)
+function marginal_mean_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractVector)
     return marginal_mean_coeff.(Ref(s), t)
 end
 
-function marginal_std_coeff(::AbstractGaussianNoiseSchedule, t::AbstractVector)
+function marginal_std_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractVector)
     return marginal_std_coeff.(Ref(s), t)
 end
 

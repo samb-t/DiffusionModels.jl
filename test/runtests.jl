@@ -1,6 +1,7 @@
 using Test
 using JET
 using RequiredInterfaces: check_interface_implemented
+using Random
 
 using DiffusionModels
 # TODO: Why is below needed? They're exported
@@ -11,6 +12,12 @@ using DiffusionModels: drift_coeff
 using DiffusionModels: diffusion_coeff
 using DiffusionModels: log_snr
 using DiffusionModels: beta
+
+using DiffusionModels: AbstractScoreParameterisation
+using DiffusionModels: get_target
+using DiffusionModels: NoiseScoreParameterisation
+using DiffusionModels: StartScoreParameterisation
+using DiffusionModels: VPredictScoreParameterisation
 
 using JET: JET, JETTestFailure, get_reports, report_call, report_opt
 # XXX: In 1.11, JET leads to stack overflows

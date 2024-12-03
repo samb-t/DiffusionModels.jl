@@ -4,6 +4,8 @@
         @test check_interface_implemented(AbstractGaussianNoiseSchedule, CosineSchedule)
 
         schedule = Schedule()
+        # also test with vectorisation
+        t = rand(Xoshiro(0), 3)
 
         # JET
         if JET_TESTING_ENABLED
@@ -13,11 +15,18 @@
             @test_opt target_modules=(DiffusionModels,) marginal_std_coeff(schedule, 0.3)
             @test_call marginal_std_coeff(schedule, 0.3)
 
+            @test_opt target_modules=(DiffusionModels,) marginal_mean_coeff(schedule, t)
+            @test_call marginal_mean_coeff(schedule, t)
+
+            @test_opt target_modules=(DiffusionModels,) marginal_std_coeff(schedule, t)
+            @test_call marginal_std_coeff(schedule, t)
+
             @test_opt target_modules=(DiffusionModels,) drift_coeff(schedule, 0.3)
             @test_call drift_coeff(schedule, 0.3)
 
             @test_opt target_modules=(DiffusionModels,) diffusion_coeff(schedule, 0.3)
             @test_call diffusion_coeff(schedule, 0.3)
+
         end
 
         # Test correctness
@@ -29,5 +38,9 @@
         @test marginal_std_coeff(schedule, 0.0) isa AbstractFloat
         @test drift_coeff(schedule, 0.0) isa AbstractFloat
         @test diffusion_coeff(schedule, 0.0) isa AbstractFloat
+
+        @test size(marginal_mean_coeff(schedule, t)) == size(t)
+        @test size(marginal_std_coeff(schedule, t)) == size(t)
+
     end
 end
