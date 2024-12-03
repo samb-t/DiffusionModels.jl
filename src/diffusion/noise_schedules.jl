@@ -17,8 +17,8 @@ function beta end
     marginal_std_coeff(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
     drift_coeff(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
     diffusion_coeff(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
-    log_snr(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
-    beta(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
+    # log_snr(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
+    # beta(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
 end
 
 function marginal_mean_coeff(::AbstractGaussianNoiseSchedule, ::AbstractVector)
@@ -135,7 +135,37 @@ function log_snr(s::LinearSchedule, t::AbstractFloat)
 end
 
 function beta(s::LinearSchedule, t::AbstractFloat)
-    return schedule.beta_start + t * (schedule.beta_end - schedule.beta_start)
+    return s.beta_start + t * (s.beta_end - s.beta_start)
+end
+
+
+# Used in "On the Importance of Noise Scheduling for Diffusion Models"
+# This is also the schedule used in Absorbing Diffusion
+# Originally from "Deep unsuper-vised learning using nonequilibrium thermodynamics"
+struct LinearMutualInfoSchedule <: VPNoiseSchedule end
+
+function log_snr(::LinearMutualInfoSchedule, t::AbstractFloat)
+    return log((1 - t) / t)
+end
+
+function beta(::LinearMutualInfoSchedule, t::AbstractFloat)
+    return 1 / (1 - t)
+end
+
+
+@kwdef struct SigmoidSchedule{T<:AbstractFloat} <: VPNoiseSchedule
+    t_start::T=-3.0
+    t_end::T=3.0
+    tau::T=1.0
+end
+
+function log_snr(s::SigmoidSchedule, t::AbstractFloat)
+end
+
+# TODO: Add tau
+function beta(schedule::SigmoidSchedule, t::AbstractFloat)
+    output = (schedule.t_end - schedule.t_start) - (schedule.t_end - schedule.t_start) / (1 + exp(t * (schedule.t_end - schedule.t_start) + schedule.t_start))
+    return convert(typeof(t), output)
 end
 
 

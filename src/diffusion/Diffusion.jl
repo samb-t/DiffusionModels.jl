@@ -36,6 +36,7 @@ export AbstractGaussianNoiseSchedule
 export VPNoiseSchedule
 export CosineSchedule
 export LinearSchedule
+export LinearMutualInfoSchedule
 #, SigmoidSchedule, LinearMutualInfoSchedule
 
 export GaussianDiffusion
