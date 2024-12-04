@@ -1,5 +1,5 @@
 
-@testset "VP Noise Schedule Tests" begin
+@testitem "VP Noise Schedule Tests" setup=[SharedTestSetup] begin
     @testset "Test $(nameof(Schedule))" for Schedule in [CosineSchedule, LinearSchedule, LinearMutualInfoSchedule]
         @test check_interface_implemented(AbstractGaussianNoiseSchedule, CosineSchedule)
 
@@ -36,6 +36,12 @@
         @test marginal_mean_coeff(schedule, 1.0) ≈ 0.0 atol=1e-2
 
         @test marginal_std_coeff(schedule, 0.0) isa AbstractFloat
+
+        # Test the variance preserving property
+        mean = marginal_mean_coeff(schedule, 0.3)
+        std = marginal_std_coeff(schedule, 0.3)
+        @test mean^2 + std^2 ≈ 1.0 atol=1e-6
+
         @test drift_coeff(schedule, 0.0) isa AbstractFloat
         @test diffusion_coeff(schedule, 0.0) isa AbstractFloat
 

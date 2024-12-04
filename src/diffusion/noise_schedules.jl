@@ -5,7 +5,6 @@ abstract type VPNoiseSchedule <: AbstractGaussianNoiseSchedule end
 abstract type VENoiseSchedule <: AbstractGaussianNoiseSchedule end
 
 
-# Define interface for gaussian noise schedules
 @doc raw"""
     marginal_mean_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractFloat)
     marginal_mean_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractVector)
@@ -13,66 +12,160 @@ abstract type VENoiseSchedule <: AbstractGaussianNoiseSchedule end
 For a Gaussian diffusion model with marginal distribution ``x_t = \alpha_t\cdot\x_0 + \sigma_t\cdot\epsilon``,
 this function returns ``\alpha_t``, the mean of the marginal distribution at time `t`.
 
+## Variance Preserving
+
+A variance preserving (VP) forward process `VPNoiseSchedule <: AbstractGaussianNoiseSchedule` can be defined
+either in terms of `marginal_mean_coeff` (``\alpha``) and `marginal_std_coeff` (``\sigma``),
+or by defining `log_snr`, the log-SNR ``\lambda_t``. ``\alpha`` and ``\sigma`` then get calculated
+as follows:
+
+``\alpha^2 = \text{sigmoid}(\lambda_t)``
+``\sigma^2 = \text{sigmoid}(-\lambda_t)``
+
+where ``\lambda_t = \log(\alpha_t^2/\sigma_t^2)``.
+
+## Variance Exploding
+
+TODO: Similar for VE forward process.
+
 ## Example
 
 ```jldoctest
 julia> s = CosineSchedule()
-julia> marginal_mean_coeff(s, 0.5)
-0.7071067811865476
+julia> marginal_mean_coeff(s, 0.3)
+0.8910065241883679
 ```
 """
 function marginal_mean_coeff end
 
 
+@doc raw"""
+    marginal_std_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractFloat)
+    marginal_std_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractVector)
+
+For a Gaussian diffusion model with marginal distribution ``x_t = \alpha_t\cdot\x_0 + \sigma_t\cdot\epsilon``,
+this function returns ``\sigma_t``, the standard deviation of the marginal distribution at time `t`.
+
+## Variance Preserving
+
+A variance preserving (VP) forward process `VPNoiseSchedule <: AbstractGaussianNoiseSchedule` can be defined
+either in terms of `marginal_mean_coeff` (``\alpha``) and `marginal_std_coeff` (``\sigma``),
+or by defining `log_snr`, the log-SNR ``\lambda_t``. ``\alpha`` and ``\sigma`` then get calculated
+
+``\alpha^2 = \text{sigmoid}(\lambda_t)``
+``\sigma^2 = \text{sigmoid}(-\lambda_t)``
+
+where ``\lambda_t = \log(\alpha_t^2/\sigma_t^2)``.
+
+## Variance Exploding
+
+TODO: Similar for VE forward process.
+
+## Example
+
+```jldoctest
+julia> s = CosineSchedule()
+julia> marginal_std_coeff(s, 0.3)
+0.4539904997395468
+```
+"""
 function marginal_std_coeff end
+
+
+@doc raw"""
+    drift_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractFloat)
+
+For a Gaussian diffusion model with SDE ``dx = f(x, t)dt + g(t)dw``,
+this function returns the drift coefficient `f(x, t)` at time `t`.
+
+For the SDE we define
+    dx = f(x, t)dt + g(t) dw
+These can be defined using β(t)
+    β(t) = d/dt log(1 + e^{-λₜ})
+
+For the VP case,
+    f(x, t) = -0.5 β(t) x    and    g(t) = β(t)
+
+## Example
+
+```jldoctest
+julia> s = CosineSchedule()
+julia> drift_coeff(s, 0.3)
+-0.8003607044743674
+```
+"""
 function drift_coeff end
+
+
+@doc raw"""
+    diffusion_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractFloat)
+
+For a Gaussian diffusion model with SDE ``dx = f(x, t)dt + g(t)dw``,
+this function returns the diffusion coefficient `g(t)` at time `t`.
+
+## Example
+
+```jldoctest
+julia> s = CosineSchedule()
+julia> diffusion_coeff(s, 0.3)
+1.2651961938564054
+```
+"""
 function diffusion_coeff end
+
+
+@doc raw"""
+    log_snr(s::AbstractGaussianNoiseSchedule, t::AbstractFloat)
+
+For a Gaussian diffusion model with marginal distribution ``x_t = \alpha_t\cdot\x_0 + \sigma_t\cdot\epsilon``,
+this function returns the log signal-to-noise ratio (SNR) at time ``t``: ``λ_t = \log(\alpha_t^2/\sigma_t^2)``.
+
+## Example
+
+```jldoctest
+julia> s = CosineSchedule()
+julia> log_snr(s, 0.3)
+1.3485509552536332
+```
+"""
 function log_snr end
+
+
+@doc raw"""
+    beta(s::AbstractGaussianNoiseSchedule, t::AbstractFloat)
+
+For a Gaussian diffusion model with SDE ``dx = f(x, t)dt + g(t)dw``,
+this function returns the function `β(t)` that defines the SDE.
+
+## Example
+
+```jldoctest
+julia> s = CosineSchedule()
+julia> beta(s, 0.3)
+1.6007214089487347
+```
+"""
 function beta end
+
 
 # TODO: Can these be moved to next to each function + docstring?
 # When I tried this it complained about the interface being defined multiple times
 @required AbstractGaussianNoiseSchedule begin
     marginal_mean_coeff(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
-    marginal_mean_coeff(::AbstractGaussianNoiseSchedule, ::AbstractVector)
     marginal_std_coeff(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
-    marginal_std_coeff(::AbstractGaussianNoiseSchedule, ::AbstractVector)
     drift_coeff(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
     diffusion_coeff(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
-    # log_snr(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
-    # beta(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
 end
+
 
 function marginal_mean_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractVector)
     return marginal_mean_coeff.(Ref(s), t)
 end
 
+
 function marginal_std_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractVector)
     return marginal_std_coeff.(Ref(s), t)
 end
-
-
-"""
-    Define in terms of marginal distribution
-        x_t = αₜ⋅x₀ + σₜ⋅ϵ
-
-    log-SNR at time t is
-        λₜ = log(αₜ²/σₜ²)
-
-    A variance preserving (VP) forward process can be defined either
-    in terms of α and σ, or from the log-SNR as
-        αₜ² = sigmoid(λₜ)   and   σₜ² = sigmoid(-λₜ)
-    By default we define the log-SNR, but you can add a new noise schedule
-    by defining α and σ instead.
-
-    For the SDE we define
-        dx = f(x, t)dt + g(t) dw
-    These can be defined using β(t)
-        β(t) = d/dt log(1 + e^{-λₜ})
-
-    For the VP case,
-        f(x, t) = -0.5 β(t) x    and    g(t) = β(t)
-"""
 
 
 # TODO: If these funcs end up being used for non-gaussian schedules,
@@ -133,7 +226,7 @@ end
     # shift::T=0.0
 end
 
-# TODO: Use beta in here instead
+# TODO: Use beta in here instead?
 function log_snr(s::CosineSchedule, t::AbstractFloat)
     return -2 * log(tan(π * t / 2)) # + 2 * s.shift
 end

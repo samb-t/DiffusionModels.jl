@@ -9,7 +9,7 @@
 # struct MockScoreParameterisation <: AbstractScoreParameterisation end
 # marginal_std_coeff()
 
-@testset "Test Score Parameterisations" begin
+@testitem "Test Score Parameterisations" setup=[SharedTestSetup] begin
     @testset "Test $(nameof(ScoreParameterisation))" for ScoreParameterisation in [
         NoiseScoreParameterisation,
         StartScoreParameterisation,
@@ -36,7 +36,7 @@
     end
 end
 
-@testset "Test ScoreFunction Inference" begin
+@testitem "Test ScoreFunction Inference" setup=[SharedTestSetup] begin
     @testset "Test ScoreFunction{F,$(nameof(ScoreParameterisation))}" for ScoreParameterisation in [
         NoiseScoreParameterisation,
         StartScoreParameterisation,
