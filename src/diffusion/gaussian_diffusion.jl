@@ -97,6 +97,9 @@ function (f::ScoreFunction{F,P})(x,p,t) where {F,P<:VPredictScoreParameterisatio
 end
 
 
+
+# NOTE: RequiredInterfaces doesn't support all of these function definitions yet
+
 # TODO: Pop dims and tspan in here and use the @concrete macro?
 struct VPDiffusion{S<:VPNoiseSchedule} <: AbstractGaussianDiffusion
     schedule::S
@@ -107,19 +110,22 @@ struct VEDiffusion{S<:VENoiseSchedule} <: AbstractGaussianDiffusion
 end
 
 function marginal(d::VPDiffusion, x_start::AbstractArray, t::AbstractVector)
-    shape = tuple([1 for _ in 1:ndims(x_start)-1]..., length(t))
+    shape = ((1 for _ in 1:ndims(x_start)-1)..., length(t))
 
-    mean = marginal_mean_coeff(d.schedule, t)
+    mean_coeff = marginal_mean_coeff(d.schedule, t)
     std = marginal_std_coeff(d.schedule, t)
 
-    mean = reshape(mean, shape)
+    mean_coeff = reshape(mean_coeff, shape)
     std = reshape(std, shape)
-    std = repeat(std, outer=(size(mean)[1:end-1]..., 1))
+    std = repeat(std, outer=(size(x_start)[1:end-1]..., 1))
+
+    mean = mean_coeff .* x_start
 
     return MdNormal(mean, std)
 end
 
 # TODO: Not true! For VE Diffusion this is much larger!
+# TODO: Need device etc.
 function sample_prior(d::AbstractGaussianDiffusion,  dims::Tuple{Int}; kwargs...)
     randn(dims, kwargs...)
 end

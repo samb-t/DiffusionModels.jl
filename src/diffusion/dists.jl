@@ -14,7 +14,7 @@ function MdNormal(μ::AbstractArray{T, N}, σ::AbstractFloat) where {T, N}
     MdNormal{T, typeof(μ), typeof(σ)}(μ, σ)
 end
 
-mean(d::MdNormal) = d.μ
-var(d::MdNormal) = d.σ .^ 2
-std(d::MdNormal) = d.σ
-rand(d::MdNormal) = d.μ .+ d.σ .* randn!(similar(d.σ))
+Statistics.mean(d::MdNormal) = d.μ
+Statistics.var(d::MdNormal) = d.σ .^ 2
+Statistics.std(d::MdNormal) = d.σ
+Base.rand(d::MdNormal) = d.μ .+ d.σ .* randn!(similar(d.σ))

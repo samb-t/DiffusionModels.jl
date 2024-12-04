@@ -36,6 +36,7 @@
     end
 end
 
+
 @testitem "Test ScoreFunction Inference" setup=[SharedTestSetup] begin
     @testset "Test ScoreFunction{F,$(nameof(ScoreParameterisation))}" for ScoreParameterisation in [
         NoiseScoreParameterisation,
@@ -65,4 +66,30 @@ end
         @test score_function(x, p, t) isa AbstractArray
         @test size(score_function(x, p, t)) == size(x)
     end
+end
+
+
+@testitem "Test VPDiffusion" setup=[SharedTestSetup] begin
+    schedule = CosineSchedule()
+
+    diffusion = VPDiffusion(schedule)
+    x_start = randn(Xoshiro(0), 10, 3)
+    t = rand(Xoshiro(1), 3)
+
+    p_x_t = marginal(diffusion, x_start, t)
+    @test p_x_t isa MdNormal
+    @test size(mean(p_x_t)) == size(x_start)
+    @test size(rand(p_x_t)) == size(x_start)
+    # JET
+    if JET_TESTING_ENABLED
+        @test_opt target_modules=(DiffusionModels,) marginal(diffusion, x_start, t)
+        @test_call marginal(diffusion, x_start, t)
+    end
+
+    # TODO: add some for sample sample_prior
+    # Definitely needs fixing
+
+
+
+
 end

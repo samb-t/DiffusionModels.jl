@@ -8,6 +8,7 @@ using MLUtils
 using NNlib
 # using Flux # TODO: Remove Flux calls
 # using DifferentialEquations
+import Statistics
 import Statistics.var
 import Base.rand
 using SciMLBase
@@ -23,6 +24,8 @@ using RequiredInterfaces
 # Or maybe it needs to go into [extras]??
 # TODO: Support DCT on GPU if available
 # using FFTW # TODO: Make optional dependency (for blurred diffusion)
+
+export MdNormal
 
 export AbstractSchedule
 export AbstractNoiseSchedule
@@ -47,14 +50,23 @@ export AbstractDiscreteTimeDiffusion
 export AbstractGaussianDiffusion
 export AbstractCategoricalDiffusion
 
-export GaussianDiffusion
+export VPDiffusion
 export CriticallyDampedDiffusion
 export DimensionalJumpDiffusion
 # export VPDiffusion, VEDiffusion, CriticallyDampedDiffusion, BlurringDiffusion,
 
+export marginal
+export sample_prior
+export get_drift_diffusion
+export get_diffeq_function
+export get_forward_diffeq
+export get_backward_diffeq
+export sample
+export denoising_loss_fn
+
 # export FrequencySchedule
 export ConstantJumpSchedule, rate, rate_integral
-export get_drift_diffusion, marginal, sample_prior, set_score_fn, get_diffeq_function, get_forward_diffeq, get_backward_diffeq
+# export get_drift_diffusion, marginal, sample_prior, set_score_fn, get_diffeq_function, get_forward_diffeq, get_backward_diffeq
 export get_jump
 export sample
 # export transition, sample, encode
