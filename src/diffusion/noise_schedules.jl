@@ -4,17 +4,39 @@ abstract type AbstractGaussianNoiseSchedule <: AbstractNoiseSchedule end
 abstract type VPNoiseSchedule <: AbstractGaussianNoiseSchedule end
 abstract type VENoiseSchedule <: AbstractGaussianNoiseSchedule end
 
+
 # Define interface for gaussian noise schedules
+@doc raw"""
+    marginal_mean_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractFloat)
+    marginal_mean_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractVector)
+
+For a Gaussian diffusion model with marginal distribution ``x_t = \alpha_t\cdot\x_0 + \sigma_t\cdot\epsilon``,
+this function returns ``\alpha_t``, the mean of the marginal distribution at time `t`.
+
+## Example
+
+```jldoctest
+julia> s = CosineSchedule()
+julia> marginal_mean_coeff(s, 0.5)
+0.7071067811865476
+```
+"""
 function marginal_mean_coeff end
+
+
 function marginal_std_coeff end
 function drift_coeff end
 function diffusion_coeff end
 function log_snr end
 function beta end
 
+# TODO: Can these be moved to next to each function + docstring?
+# When I tried this it complained about the interface being defined multiple times
 @required AbstractGaussianNoiseSchedule begin
     marginal_mean_coeff(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
+    marginal_mean_coeff(::AbstractGaussianNoiseSchedule, ::AbstractVector)
     marginal_std_coeff(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
+    marginal_std_coeff(::AbstractGaussianNoiseSchedule, ::AbstractVector)
     drift_coeff(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
     diffusion_coeff(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
     # log_snr(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
@@ -59,6 +81,7 @@ end
 # TODO: Add necessary clipping to all coefficients
 
 # TODO: Square root in the SDE? APplies to both VP and VE
+
 function marginal_mean_coeff(s::VPNoiseSchedule, t::AbstractFloat)
     λₜ = log_snr(s::VPNoiseSchedule, t)
     return sqrt(sigmoid(λₜ))
@@ -69,7 +92,7 @@ function marginal_std_coeff(s::VPNoiseSchedule, t::AbstractFloat)
     return sqrt(sigmoid(-λₜ))
 end
 
-function marginal_mean_coeff(::VENoiseSchedule, t::AbstractFloat)
+function marginal_mean_coeff(::VENoiseSchedule, ::AbstractFloat)
     return 1
 end
 
@@ -93,7 +116,7 @@ function diffusion_coeff(s::VPNoiseSchedule, t::AbstractFloat)
     return sqrt(beta(s, t))
 end
 
-function drift_coeff(s::VENoiseSchedule, t::AbstractFloat)
+function drift_coeff(::VENoiseSchedule, ::AbstractFloat)
     return 0
 end
 
@@ -159,8 +182,8 @@ end
     tau::T=1.0
 end
 
-function log_snr(s::SigmoidSchedule, t::AbstractFloat)
-end
+# function log_snr(s::SigmoidSchedule, t::AbstractFloat)
+# end
 
 # TODO: Add tau
 function beta(schedule::SigmoidSchedule, t::AbstractFloat)
@@ -198,7 +221,6 @@ function rate_integral(s::ConstantJumpSchedule, t::AbstractFloat)
     return rate(s, t) * t
 end
 
-# TODO: Rename all schedules to have same function names so these functions can be shared
 function rate_integral(schedule::AbstractNoiseSchedule, t::AbstractArray)
     rate_int(t::AbstractFloat) = rate_integral(schedule, t)
     return rate_int.(t)

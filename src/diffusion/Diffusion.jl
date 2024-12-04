@@ -39,13 +39,13 @@ export NoiseScoreParameterisation
 export StartScoreParameterisation
 export VPredictScoreParameterisation
 
+export ScoreFunction
+
 export AbstractDiffusion
 export AbstractContinuousTimeDiffusion
 export AbstractDiscreteTimeDiffusion
 export AbstractGaussianDiffusion
 export AbstractCategoricalDiffusion
-
-
 
 export GaussianDiffusion
 export CriticallyDampedDiffusion

@@ -35,3 +35,34 @@
         @test size(get_target(parameterisation, x_start, noise, t)) == size(x_start)
     end
 end
+
+@testset "Test ScoreFunction Inference" begin
+    @testset "Test ScoreFunction{F,$(nameof(ScoreParameterisation))}" for ScoreParameterisation in [
+        NoiseScoreParameterisation,
+        StartScoreParameterisation,
+        VPredictScoreParameterisation,
+    ]
+        # TODO: could use Lux for this
+        model = (x,p,t) -> x
+        # TODO: Mock the schedule
+        schedule = CosineSchedule()
+
+        parameterisation = ScoreParameterisation(schedule)
+        score_function = ScoreFunction(model, parameterisation)
+
+        x = randn(Xoshiro(0), 10, 3)
+        p = nothing
+        # TODO: Does this need to be tested with t as a vector?
+        t = 0.3
+
+        # JET
+        if JET_TESTING_ENABLED
+            @test_opt target_modules=(DiffusionModels,) score_function(x, p, t)
+            @test_call score_function(x, p, t)
+        end
+
+        # Test correctness
+        @test score_function(x, p, t) isa AbstractArray
+        @test size(score_function(x, p, t)) == size(x)
+    end
+end
