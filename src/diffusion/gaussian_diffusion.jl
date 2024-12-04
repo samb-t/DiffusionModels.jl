@@ -166,7 +166,7 @@ function sample(
     d::AbstractGaussianDiffusion,
     score_fn::ScoreFunction{F,P},
     dims::NTuple{N, Int},
-    alg::StochasticDiffEqAlgorithm=EM(),
+    alg::AbstractSDEAlgorithm;
     kwargs...
 ) where {F,P,N}
     x = sample_prior(d, dims)

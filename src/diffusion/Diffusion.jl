@@ -10,8 +10,8 @@ using NNlib
 # using DifferentialEquations
 import Statistics.var
 import Base.rand
-using StochasticDiffEq
-using OrdinaryDiffEq
+using SciMLBase
+using SciMLBase: AbstractSDEAlgorithm
 using JumpProcesses
 using OptimalTransport # TODO: Request bump in NNLib version in OptimalTransport.jl
 using Distances: SqEuclidean

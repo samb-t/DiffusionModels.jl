@@ -10,17 +10,17 @@ JumpProcesses = "ccbc3e58-028d-4f4c-8cd5-9ae44345cda5"
 MLUtils = "f1d291b0-491e-4a28-83b9-f70985020b54"
 NNlib = "872c559c-99b0-510c-b3b7-b6c96a88d5cd"
 OptimalTransport = "7e02d93a-ae51-4f58-b602-d97af76e3b33"
-OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
 RequiredInterfaces = "97f35ef4-7bc5-4ec1-a41a-dcc69c7308c6"
+SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-StochasticDiffEq = "789caeaf-c7a9-5a7d-9973-96adeb23e2a0"
 
 [compat]
 OptimalTransport = "0.3.19"
 RequiredInterfaces = "0.1.6"
+SciMLBase = "2.65.1"
 julia = "1"
 
 [extras]
