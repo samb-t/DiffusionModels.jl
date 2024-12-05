@@ -72,23 +72,45 @@ end
 @testitem "Test VPDiffusion" setup=[SharedTestSetup] begin
     schedule = CosineSchedule()
 
-    diffusion = VPDiffusion(schedule)
+    diffusion_model = VPDiffusion(schedule)
     x_start = randn(Xoshiro(0), 10, 3)
     t = rand(Xoshiro(1), 3)
 
-    p_x_t = marginal(diffusion, x_start, t)
-    @test p_x_t isa MdNormal
-    @test size(mean(p_x_t)) == size(x_start)
-    @test size(rand(p_x_t)) == size(x_start)
-    # JET
-    if JET_TESTING_ENABLED
-        @test_opt target_modules=(DiffusionModels,) marginal(diffusion, x_start, t)
-        @test_call marginal(diffusion, x_start, t)
+    @testset "Test marginal(...)" begin
+        p_x_t = marginal(diffusion_model, x_start, t)
+        @test p_x_t isa MdNormal
+        @test size(mean(p_x_t)) == size(x_start)
+        @test size(rand(p_x_t)) == size(x_start)
+        # JET
+        if JET_TESTING_ENABLED
+            @test_opt target_modules=(DiffusionModels,) marginal(diffusion_model, x_start, t)
+            @test_call marginal(diffusion_model, x_start, t)
+        end
     end
 
     # TODO: add some for sample sample_prior
     # Definitely needs fixing
 
+    @testset "Test get_drift_diffusion(...)" begin
+        drift_fn, diffusion_fn = get_drift_diffusion(diffusion_model)
+        @test drift_fn isa Function
+        @test diffusion_fn isa Function
+        @test drift_fn(x_start, nothing, 0.3) isa AbstractArray
+        @test size(drift_fn(x_start, nothing, 0.3)) == size(x_start)
+        @test diffusion_fn(x_start, nothing, 0.3) isa Union{AbstractArray, AbstractFloat}
+        # Test broadcastable with?
+        if JET_TESTING_ENABLED
+            @test_opt target_modules=(DiffusionModels,) drift_fn(x_start, nothing, 0.3)
+            @test_call drift_fn(x_start, nothing, 0.3)
+            @test_opt target_modules=(DiffusionModels,) diffusion_fn(x_start, nothing, 0.3)
+            @test_call diffusion_fn(x_start, nothing, 0.3)
+        end
+    end
+
+    @testset "Test get_diffeq_function(...)" begin
+        sde_func = get_diffeq_function(diffusion_model)
+        @test sde_func isa SDEFunction
+    end
 
 
 

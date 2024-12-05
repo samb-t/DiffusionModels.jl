@@ -5,6 +5,7 @@
     using RequiredInterfaces: check_interface_implemented
     using Random
     using Statistics
+    using SciMLBase
     using TestItemRunner
 
     using DiffusionModels

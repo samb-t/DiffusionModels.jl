@@ -123,16 +123,16 @@ function marginal(d::VPDiffusion, x_start::AbstractArray, t::AbstractVector)
     return MdNormal(mean, std)
 end
 
+function get_drift_diffusion(d::VPDiffusion)
+    drift(x, p, t) = -0.5 .* drift_coeff(d.schedule, t) .* x
+    diffusion(x, p, t) = diffusion_coeff(d.schedule, t)
+    return drift, diffusion
+end
+
 # TODO: Not true! For VE Diffusion this is much larger!
 # TODO: Need device etc.
 function sample_prior(d::AbstractGaussianDiffusion, dims::Tuple{Int}; kwargs...)
     return randn(dims, kwargs...)
-end
-
-function get_drift_diffusion(d::VPDiffusion)
-    drift(x, p, t) = -0.5 * drift_coeff(d.schedule, t) .* x
-    diffusion(x, p, t) = diffusion_coeff(d.schedule, t)
-    return drift, diffusion
 end
 
 function get_diffeq_function(d::AbstractGaussianDiffusion)
