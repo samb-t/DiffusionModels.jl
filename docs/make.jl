@@ -29,6 +29,7 @@ pages = [
     "API Reference" => [
         "DiffusionModels" => [
             "api/noise_schedules.md",
+            "api/gaussian_diffusion.md",
         ],
     ]
 ]

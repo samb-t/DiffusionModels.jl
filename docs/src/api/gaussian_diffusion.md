@@ -8,7 +8,12 @@ CollapsedDocStrings = true
 
 ```@docs
 DiffusionModels.AbstractScoreParameterisation
-DiffusionModels.AbstractNoiseSchedule
-DiffusionModels.AbstractGaussianNoiseSchedule
-DiffusionModels.VPNoiseSchedule
+```
+
+## Score Parameterisations
+
+```@docs
+DiffusionModels.NoiseScoreParameterisation
+DiffusionModels.VPredictScoreParameterisation
+DiffusionModels.StartScoreParameterisation
 ```

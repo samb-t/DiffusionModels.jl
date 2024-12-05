@@ -66,7 +66,7 @@ function marginal_mean_coeff end
     marginal_std_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractFloat)
     marginal_std_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractVector)
 
-For a Gaussian diffusion model with marginal distribution ``x_t = \alpha_t\cdot\x_0 + \sigma_t\cdot\epsilon``,
+For a Gaussian diffusion model with marginal distribution ``x_t = \alpha_t\cdot x_0 + \sigma_t\cdot\epsilon``,
 this function returns ``\sigma_t``, the standard deviation of the marginal distribution at time `t`.
 
 ## Variance Preserving
@@ -75,8 +75,13 @@ A variance preserving (VP) forward process `VPNoiseSchedule <: AbstractGaussianN
 either in terms of `marginal_mean_coeff` (``\alpha``) and `marginal_std_coeff` (``\sigma``),
 or by defining `log_snr`, the log-SNR ``\lambda_t``. ``\alpha`` and ``\sigma`` then get calculated
 
-``\alpha^2 = \text{sigmoid}(\lambda_t)``
-``\sigma^2 = \text{sigmoid}(-\lambda_t)``
+``math
+    \alpha^2 = \text{sigmoid}(\lambda_t)
+``
+
+``math
+    \sigma^2 = \text{sigmoid}(-\lambda_t)
+``
 
 where ``\lambda_t = \log(\alpha_t^2/\sigma_t^2)``.
 

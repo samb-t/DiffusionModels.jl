@@ -15,6 +15,8 @@ DiffusionModels.VPNoiseSchedule
 
 ## Functions
 
+Some functions
+
 ```@docs
 DiffusionModels.marginal_mean_coeff
 DiffusionModels.marginal_std_coeff
