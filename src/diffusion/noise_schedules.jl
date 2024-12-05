@@ -4,7 +4,6 @@ abstract type AbstractGaussianNoiseSchedule <: AbstractNoiseSchedule end
 abstract type VPNoiseSchedule <: AbstractGaussianNoiseSchedule end
 abstract type VENoiseSchedule <: AbstractGaussianNoiseSchedule end
 
-
 @doc raw"""
     marginal_mean_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractFloat)
     marginal_mean_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractVector)
@@ -38,7 +37,6 @@ julia> marginal_mean_coeff(s, 0.3)
 """
 function marginal_mean_coeff end
 
-
 @doc raw"""
     marginal_std_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractFloat)
     marginal_std_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractVector)
@@ -71,7 +69,6 @@ julia> marginal_std_coeff(s, 0.3)
 """
 function marginal_std_coeff end
 
-
 @doc raw"""
     drift_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractFloat)
 
@@ -96,7 +93,6 @@ julia> drift_coeff(s, 0.3)
 """
 function drift_coeff end
 
-
 @doc raw"""
     diffusion_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractFloat)
 
@@ -112,7 +108,6 @@ julia> diffusion_coeff(s, 0.3)
 ```
 """
 function diffusion_coeff end
-
 
 @doc raw"""
     log_snr(s::AbstractGaussianNoiseSchedule, t::AbstractFloat)
@@ -130,7 +125,6 @@ julia> log_snr(s, 0.3)
 """
 function log_snr end
 
-
 @doc raw"""
     beta(s::AbstractGaussianNoiseSchedule, t::AbstractFloat)
 
@@ -147,7 +141,6 @@ julia> beta(s, 0.3)
 """
 function beta end
 
-
 # TODO: Can these be moved to next to each function + docstring?
 # When I tried this it complained about the interface being defined multiple times
 @required AbstractGaussianNoiseSchedule begin
@@ -157,16 +150,13 @@ function beta end
     diffusion_coeff(::AbstractGaussianNoiseSchedule, ::AbstractFloat)
 end
 
-
 function marginal_mean_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractVector)
     return marginal_mean_coeff.(Ref(s), t)
 end
 
-
 function marginal_std_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractVector)
     return marginal_std_coeff.(Ref(s), t)
 end
-
 
 # TODO: If these funcs end up being used for non-gaussian schedules,
 # give them some more general names
@@ -198,7 +188,6 @@ end
 # and calculates β(t) = d/dt log(1 + e^{-λₜ}) with automatic symbolic
 # differentiation
 
-
 # TODO: Think of better names than drift/diffusion so it makes more sense
 # to apply to the discrete state space too.
 function drift_coeff(s::VPNoiseSchedule, t::AbstractFloat)
@@ -214,15 +203,14 @@ function drift_coeff(::VENoiseSchedule, ::AbstractFloat)
 end
 
 function diffusion_coeff(s::VENoiseSchedule, t::AbstractFloat)
-    sqrt(beta(s, t))
+    return sqrt(beta(s, t))
 end
 
-
 @kwdef struct CosineSchedule{T<:AbstractFloat} <: VPNoiseSchedule
-    t_start::T=0.0
-    t_end::T=1.0
-    tau::T=1.0
-    clip_min::T=1e-9
+    t_start::T = 0.0
+    t_end::T = 1.0
+    tau::T = 1.0
+    clip_min::T = 1e-9
     # shift::T=0.0
 end
 
@@ -236,16 +224,15 @@ function beta(s::CosineSchedule, t::AbstractFloat)
     return π * s.tau * tan(π * t / 2)
 end
 
-
 @kwdef struct LinearSchedule{T<:AbstractFloat} <: VPNoiseSchedule
-    beta_start::T=0.1
-    beta_end::T=20.0
-    clip_min::T=1e-9
+    beta_start::T = 0.1
+    beta_end::T = 20.0
+    clip_min::T = 1e-9
 end
 
 # TODO: Can this be simplified?
 function log_snr(s::LinearSchedule, t::AbstractFloat)
-    alpha_bar = exp(-0.5 * t ^ 2 * (s.beta_end - s.beta_start) - t * s.beta_start)
+    alpha_bar = exp(-0.5 * t^2 * (s.beta_end - s.beta_start) - t * s.beta_start)
     snr = alpha_bar / (1 - alpha_bar)
     return log(snr)
 end
@@ -253,7 +240,6 @@ end
 function beta(s::LinearSchedule, t::AbstractFloat)
     return s.beta_start + t * (s.beta_end - s.beta_start)
 end
-
 
 # Used in "On the Importance of Noise Scheduling for Diffusion Models"
 # This is also the schedule used in Absorbing Diffusion
@@ -268,11 +254,10 @@ function beta(::LinearMutualInfoSchedule, t::AbstractFloat)
     return 1 / (1 - t)
 end
 
-
 @kwdef struct SigmoidSchedule{T<:AbstractFloat} <: VPNoiseSchedule
-    t_start::T=-3.0
-    t_end::T=3.0
-    tau::T=1.0
+    t_start::T = -3.0
+    t_end::T = 3.0
+    tau::T = 1.0
 end
 
 # function log_snr(s::SigmoidSchedule, t::AbstractFloat)
@@ -280,10 +265,12 @@ end
 
 # TODO: Add tau
 function beta(schedule::SigmoidSchedule, t::AbstractFloat)
-    output = (schedule.t_end - schedule.t_start) - (schedule.t_end - schedule.t_start) / (1 + exp(t * (schedule.t_end - schedule.t_start) + schedule.t_start))
+    output =
+        (schedule.t_end - schedule.t_start) -
+        (schedule.t_end - schedule.t_start) /
+        (1 + exp(t * (schedule.t_end - schedule.t_start) + schedule.t_start))
     return convert(typeof(t), output)
 end
-
 
 # TODO: Add EDM Schedule from Karras et al. 2022
 # NOTE: This schedule is different at train and sampling time
@@ -291,23 +278,19 @@ end
 
 # end
 
-
-
-
-
 ## Jump Schedules ##
 
 abstract type AbstractJumpSchedule <: AbstractSchedule end
 
 @kwdef struct ConstantJumpSchedule <: AbstractJumpSchedule
     max_dim::Int
-    minimum_dims::Int=1
-    std_mult::AbstractFloat=0.7
+    minimum_dims::Int = 1
+    std_mult::AbstractFloat = 0.7
 end
 
 function rate(s::ConstantJumpSchedule, t::AbstractFloat)
     c = s.max_dim - s.minimum_dims
-    (2 * c + s.std_mult^2 + sqrt((s.std_mult^2 + 2 * c)^2 - 4 * c^2)) / 2
+    return (2 * c + s.std_mult^2 + sqrt((s.std_mult^2 + 2 * c)^2 - 4 * c^2)) / 2
 end
 
 function rate_integral(s::ConstantJumpSchedule, t::AbstractFloat)

@@ -5,14 +5,15 @@
 #       - as SciMLBase.DiscreteProblem
 #       - DiscreteProblem(f::ODEFunction, u0, tspan) is already allowed
 
-
 """
     Score ∇ₓlog p(x) ≈ s(xₜ,t,θ) = f(xₜ,t,θ)
 """
 abstract type AbstractScoreParameterisation <: AbstractModelParameterisation end
 
 @required AbstractScoreParameterisation begin
-    get_target(::AbstractScoreParameterisation, ::AbstractArray, ::AbstractArray, ::AbstractVector)
+    get_target(
+        ::AbstractScoreParameterisation, ::AbstractArray, ::AbstractArray, ::AbstractVector
+    )
 end
 
 """
@@ -55,7 +56,8 @@ end
     v = αₜϵ + σₜx₀
     s(x,p,t) = -(v(x,p,t)+σₜx)/(αₜσₜ)
 """
-struct VPredictScoreParameterisation{S<:AbstractNoiseSchedule} <: AbstractScoreParameterisation
+struct VPredictScoreParameterisation{S<:AbstractNoiseSchedule} <:
+       AbstractScoreParameterisation
     schedule::S
 end
 
@@ -65,7 +67,7 @@ function get_target(
     noise::AbstractArray,
     t::AbstractVector,
 )
-    shape = ((1 for _ in 1:ndims(x_start)-1)..., length(t))
+    shape = ((1 for _ in 1:(ndims(x_start) - 1))..., length(t))
     sigma_t = marginal_std_coeff(parameterisation.schedule, t)
     alpha_t = marginal_mean_coeff(parameterisation.schedule, t)
     sigma_t = reshape(sigma_t, shape)
@@ -74,29 +76,26 @@ function get_target(
     return v
 end
 
-
-struct ScoreFunction{F, P<:AbstractScoreParameterisation}
+struct ScoreFunction{F,P<:AbstractScoreParameterisation}
     model::F
     parameterisation::P
 end
 
-function (f::ScoreFunction{F,P})(x,p,t) where {F,P<:NoiseScoreParameterisation}
-    return -f.model(x,p,t) ./ marginal_std_coeff(f.parameterisation.schedule, t)
+function (f::ScoreFunction{F,P})(x, p, t) where {F,P<:NoiseScoreParameterisation}
+    return -f.model(x, p, t) ./ marginal_std_coeff(f.parameterisation.schedule, t)
 end
 
-function (f::ScoreFunction{F,P})(x,p,t) where {F,P<:StartScoreParameterisation}
+function (f::ScoreFunction{F,P})(x, p, t) where {F,P<:StartScoreParameterisation}
     sigma_t = marginal_std_coeff(f.parameterisation.schedule, t)
     alpha_t = marginal_mean_coeff(f.parameterisation.schedule, t)
-    return -sigma_t.^(-2) .* (x .- alpha_t .* f.model(x,p,t))
+    return -sigma_t .^ (-2) .* (x .- alpha_t .* f.model(x, p, t))
 end
 
-function (f::ScoreFunction{F,P})(x,p,t) where {F,P<:VPredictScoreParameterisation}
+function (f::ScoreFunction{F,P})(x, p, t) where {F,P<:VPredictScoreParameterisation}
     sigma_t = marginal_std_coeff(f.parameterisation.schedule, t)
     alpha_t = marginal_mean_coeff(f.parameterisation.schedule, t)
-    return -(f.model(x,p,t) .+ sigma_t) ./ (alpha_t .* sigma_t)
+    return -(f.model(x, p, t) .+ sigma_t) ./ (alpha_t .* sigma_t)
 end
-
-
 
 # NOTE: RequiredInterfaces doesn't support all of these function definitions yet
 
@@ -110,14 +109,14 @@ struct VEDiffusion{S<:VENoiseSchedule} <: AbstractGaussianDiffusion
 end
 
 function marginal(d::VPDiffusion, x_start::AbstractArray, t::AbstractVector)
-    shape = ((1 for _ in 1:ndims(x_start)-1)..., length(t))
+    shape = ((1 for _ in 1:(ndims(x_start) - 1))..., length(t))
 
     mean_coeff = marginal_mean_coeff(d.schedule, t)
     std = marginal_std_coeff(d.schedule, t)
 
     mean_coeff = reshape(mean_coeff, shape)
     std = reshape(std, shape)
-    std = repeat(std, outer=(size(x_start)[1:end-1]..., 1))
+    std = repeat(std; outer=(size(x_start)[1:(end - 1)]..., 1))
 
     mean = mean_coeff .* x_start
 
@@ -126,13 +125,13 @@ end
 
 # TODO: Not true! For VE Diffusion this is much larger!
 # TODO: Need device etc.
-function sample_prior(d::AbstractGaussianDiffusion,  dims::Tuple{Int}; kwargs...)
-    randn(dims, kwargs...)
+function sample_prior(d::AbstractGaussianDiffusion, dims::Tuple{Int}; kwargs...)
+    return randn(dims, kwargs...)
 end
 
 function get_drift_diffusion(d::VPDiffusion)
-    drift(x,p,t) = -0.5 * drift_coeff(d.schedule, t) .* x
-    diffusion(x,p,t) = diffusion_coeff(d.schedule, t)
+    drift(x, p, t) = -0.5 * drift_coeff(d.schedule, t) .* x
+    diffusion(x, p, t) = diffusion_coeff(d.schedule, t)
     return drift, diffusion
 end
 
@@ -144,7 +143,7 @@ end
 function get_forward_diffeq(
     d::AbstractGaussianDiffusion,
     x::AbstractArray,
-    tspan::Tuple{AbstractFloat, AbstractFloat},
+    tspan::Tuple{AbstractFloat,AbstractFloat},
 )
     @assert tspan[1] < tspan[2]
     diffeq_fn = get_diffeq_function(d)
@@ -156,12 +155,12 @@ function get_backward_diffeq(
     d::AbstractGaussianDiffusion,
     score_fn::ScoreFunction{F,P},
     x::AbstractArray,
-    tspan::Tuple{AbstractFloat, AbstractFloat},
+    tspan::Tuple{AbstractFloat,AbstractFloat},
 ) where {F,P}
     @assert tspan[1] > tspan[2]
     @assert !isnothing(score_fn)
     drift, diffusion = get_drift_diffusion(d) # TODO: Change to get_diffeq_function?
-    reverse_drift(x,p,t) = drift(x,p,t) .- diffusion(x,p,t).^2 .* score_fn(x,p,t)
+    reverse_drift(x, p, t) = drift(x, p, t) .- diffusion(x, p, t) .^ 2 .* score_fn(x, p, t)
     prob = SDEProblem(drift, diffusion, x, tspan)
     return prob
 end
@@ -171,12 +170,12 @@ end
 function sample(
     d::AbstractGaussianDiffusion,
     score_fn::ScoreFunction{F,P},
-    dims::NTuple{N, Int},
+    dims::NTuple{N,Int},
     alg::AbstractSDEAlgorithm;
-    kwargs...
+    kwargs...,
 ) where {F,P,N}
     x = sample_prior(d, dims)
-    prob = get_backward_diffeq(d, score_fn, x, (1,0))
+    prob = get_backward_diffeq(d, score_fn, x, (1, 0))
     sol = solve(prob, alg; kwargs...)
     return sol
 end
@@ -188,7 +187,7 @@ function denoising_loss_fn(
     x::AbstractArray,
     score_fn::ScoreFunction{F,P};
     p=nothing,
-    eps=1f-5,
+    eps=1.0f-5,
 ) where {F,P}
     t = rand(size(x, ndims(x))) * (1.0 - eps) + eps
     marginal_dist = marginal(d, x, t)
@@ -198,10 +197,10 @@ function denoising_loss_fn(
     model = score_fn.model
     parameterisation = score_fn.parameterisation
 
-    target = get_target(parameterisation, x, z, t)s
+    target = get_target(parameterisation, x, z, t)
 
     pred = model(perturbed_data, p, t)
 
     losses = (pred .- target) .^ 2
-    return mean(losses, dims=1:(ndims(losses)-1))
+    return mean(losses; dims=1:(ndims(losses) - 1))
 end
