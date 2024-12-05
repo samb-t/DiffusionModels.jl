@@ -1,7 +1,32 @@
+@doc raw"""
+    AbstractSchedule
+
+Abstract type for schedules. TODO: write docstring.
+"""
 abstract type AbstractSchedule end
+
+@doc raw"""
+    AbstractNoiseSchedule
+
+Abstract type for noise schedules. TODO: write docstring.
+"""
 abstract type AbstractNoiseSchedule <: AbstractSchedule end
+
+@doc raw"""
+    AbstractGaussianNoiseSchedule
+
+Abstract type for Gaussian noise schedules. TODO: write docstring.
+"""
 abstract type AbstractGaussianNoiseSchedule <: AbstractNoiseSchedule end
+
+@doc raw"""
+    VPNoiseSchedule
+
+Abstract type for variance preserving (VP) noise schedules. TODO: write docstring.
+"""
 abstract type VPNoiseSchedule <: AbstractGaussianNoiseSchedule end
+
+# TODO: Add VENoiseSchedule docstring
 abstract type VENoiseSchedule <: AbstractGaussianNoiseSchedule end
 
 @doc raw"""
