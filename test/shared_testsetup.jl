@@ -6,6 +6,7 @@
     using Random
     using Statistics
     using SciMLBase
+    using StochasticDiffEq
     using TestItemRunner
 
     using DiffusionModels

@@ -68,50 +68,120 @@ end
     end
 end
 
-
-@testitem "Test VPDiffusion" setup=[SharedTestSetup] begin
+@testsnippet VPDiffusionSetup begin
     schedule = CosineSchedule()
-
     diffusion_model = VPDiffusion(schedule)
     x_start = randn(Xoshiro(0), 10, 3)
-    t = rand(Xoshiro(1), 3)
+    noise = randn(Xoshiro(1), 10, 3)
+    t = rand(Xoshiro(2), 3)
+end
 
-    @testset "Test marginal(...)" begin
-        p_x_t = marginal(diffusion_model, x_start, t)
-        @test p_x_t isa MdNormal
-        @test size(mean(p_x_t)) == size(x_start)
-        @test size(rand(p_x_t)) == size(x_start)
-        # JET
-        if JET_TESTING_ENABLED
-            @test_opt target_modules=(DiffusionModels,) marginal(diffusion_model, x_start, t)
-            @test_call marginal(diffusion_model, x_start, t)
-        end
+
+@testitem "Test marginal(::VPDiffusion, ...)" setup=[SharedTestSetup, VPDiffusionSetup] begin
+    p_x_t = marginal(diffusion_model, x_start, t)
+    @test p_x_t isa MdNormal
+    @test size(mean(p_x_t)) == size(x_start)
+    @test size(rand(p_x_t)) == size(x_start)
+    # JET
+    if JET_TESTING_ENABLED
+        @test_opt target_modules=(DiffusionModels,) marginal(diffusion_model, x_start, t)
+        @test_call marginal(diffusion_model, x_start, t)
     end
+end
 
-    # TODO: add some for sample sample_prior
-    # Definitely needs fixing
+# TODO: add some for sample sample_prior
+# Definitely needs fixing
 
-    @testset "Test get_drift_diffusion(...)" begin
-        drift_fn, diffusion_fn = get_drift_diffusion(diffusion_model)
-        @test drift_fn isa Function
-        @test diffusion_fn isa Function
-        @test drift_fn(x_start, nothing, 0.3) isa AbstractArray
-        @test size(drift_fn(x_start, nothing, 0.3)) == size(x_start)
-        @test diffusion_fn(x_start, nothing, 0.3) isa Union{AbstractArray, AbstractFloat}
-        # Test broadcastable with?
-        if JET_TESTING_ENABLED
-            @test_opt target_modules=(DiffusionModels,) drift_fn(x_start, nothing, 0.3)
-            @test_call drift_fn(x_start, nothing, 0.3)
-            @test_opt target_modules=(DiffusionModels,) diffusion_fn(x_start, nothing, 0.3)
-            @test_call diffusion_fn(x_start, nothing, 0.3)
-        end
+@testitem "Test get_drift_diffusion(::VPDiffusion, ...)" setup=[SharedTestSetup, VPDiffusionSetup] begin
+    drift_fn, diffusion_fn = get_drift_diffusion(diffusion_model)
+    @test drift_fn isa Function
+    @test diffusion_fn isa Function
+    @test drift_fn(x_start, nothing, 0.3) isa AbstractArray
+    @test size(drift_fn(x_start, nothing, 0.3)) == size(x_start)
+    @test diffusion_fn(x_start, nothing, 0.3) isa Union{AbstractArray, AbstractFloat}
+    # Test broadcastable with?
+    if JET_TESTING_ENABLED
+        @test_opt target_modules=(DiffusionModels,) drift_fn(x_start, nothing, 0.3)
+        @test_call drift_fn(x_start, nothing, 0.3)
+        @test_opt target_modules=(DiffusionModels,) diffusion_fn(x_start, nothing, 0.3)
+        @test_call diffusion_fn(x_start, nothing, 0.3)
     end
+end
 
-    @testset "Test get_diffeq_function(...)" begin
-        sde_func = get_diffeq_function(diffusion_model)
-        @test sde_func isa SDEFunction
+@testitem "Test get_diffeq_function(::VPDiffusion, ...)" setup=[SharedTestSetup, VPDiffusionSetup] begin
+    sde_func = get_diffeq_function(diffusion_model)
+    @test sde_func isa SDEFunction
+
+    # JET
+    if JET_TESTING_ENABLED
+        @test_opt target_modules=(DiffusionModels,) get_diffeq_function(diffusion_model)
+        @test_call broken=true get_diffeq_function(diffusion_model)
     end
+end
 
+@testitem "Test get_forward_diffeq(::VPDiffusion, ...)" setup=[SharedTestSetup, VPDiffusionSetup] begin
+    prob = get_forward_diffeq(diffusion_model, x_start, (0.0, 1.0))
+    @test prob isa SDEProblem
+    @test prob.u0 == x_start
+    @test prob.tspan == (0.0, 1.0)
+    # TODO: Test that the prob can be solved
 
+    # JET
+    if JET_TESTING_ENABLED
+        @test_opt broken=true get_forward_diffeq(diffusion_model, x_start, (0.0, 1.0))
+        @test_call broken=true get_forward_diffeq(diffusion_model, x_start, (0.0, 1.0))
+    end
+end
+
+@testitem "Test get_backward_diffeq(::VPDiffusion, ...)" setup=[SharedTestSetup, VPDiffusionSetup] begin
+    score_fn = ScoreFunction((x,p,t) -> x, NoiseScoreParameterisation(schedule))
+    prob = get_backward_diffeq(diffusion_model, score_fn, noise, (1.0, 0.0))
+    @test prob isa SDEProblem
+    @test prob.u0 == noise
+    @test prob.tspan == (1.0, 0.0)
+    # TODO: Test that the prob can be solved
+
+    # Test x_0 parameterisation
+    pred_x_start = (x,p,t) -> x_start
+    score_fn = ScoreFunction(pred_x_start, StartScoreParameterisation(schedule))
+    prob = get_backward_diffeq(diffusion_model, score_fn, noise, (1.0, 0.0))
+    sol = solve(prob, EM(), dt=1e-4)
+    @test sol isa RODESolution
+    @test size(sol.u[end]) == size(x_start)
+    # There will be an arror depending on dt, so we pick a fairly large atol
+    @test sol.u[end] ≈ x_start atol=0.005
+
+    # Run JET on solving
+    if JET_TESTING_ENABLED
+        @test_opt target_modules=(DiffusionModels,) solve(prob, EM(), dt=1e-3)
+        @test_call solve(prob, EM(), dt=1e-3)
+    end
+end
+
+@testitem "Test sample(::VPDiffusion, ...)" setup=[SharedTestSetup, VPDiffusionSetup] begin
+    alg = EM()
+    score_fn = ScoreFunction((x,p,t) -> x, NoiseScoreParameterisation(schedule))
+    sol = sample(diffusion_model, score_fn, size(x_start), alg, dt=1e-3)
+    @test sol isa RODESolution
+    @test size(sol.u[end]) == size(x_start)
+
+    # JET
+    if JET_TESTING_ENABLED
+        @test_opt target_modules=(DiffusionModels,) sample(diffusion_model, score_fn, size(x_start), alg, dt=1e-3)
+        @test_call broken=true sample(diffusion_model, score_fn, size(x_start), alg, dt=1e-3)
+    end
+end
+
+@testitem "Test denoising_loss_fn(::VPDiffusion, ...)" setup=[SharedTestSetup, VPDiffusionSetup] begin
+    score_fn = ScoreFunction((x,p,t) -> x_start, StartScoreParameterisation(schedule))
+    loss = denoising_loss_fn(diffusion_model, noise, score_fn)
+    @test loss isa AbstractFloat
+    @test loss >= 0.0
+
+    # JET
+    if JET_TESTING_ENABLED
+        @test_opt target_modules=(DiffusionModels,) denoising_loss_fn(diffusion_model, noise, score_fn)
+        @test_call denoising_loss_fn(diffusion_model, noise, score_fn)
+    end
 
 end

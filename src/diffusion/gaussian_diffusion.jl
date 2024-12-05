@@ -131,7 +131,7 @@ end
 
 # TODO: Not true! For VE Diffusion this is much larger!
 # TODO: Need device etc.
-function sample_prior(d::AbstractGaussianDiffusion, dims::Tuple{Int}; kwargs...)
+function sample_prior(d::AbstractGaussianDiffusion, dims::Tuple{N, Int}; kwargs...) where N
     return randn(dims, kwargs...)
 end
 
@@ -161,7 +161,8 @@ function get_backward_diffeq(
     @assert !isnothing(score_fn)
     drift, diffusion = get_drift_diffusion(d) # TODO: Change to get_diffeq_function?
     reverse_drift(x, p, t) = drift(x, p, t) .- diffusion(x, p, t) .^ 2 .* score_fn(x, p, t)
-    prob = SDEProblem(drift, diffusion, x, tspan)
+    diffeq_fn = SDEFunction(reverse_drift, diffusion)
+    prob = SDEProblem(diffeq_fn, x, tspan)
     return prob
 end
 
@@ -172,11 +173,12 @@ function sample(
     score_fn::ScoreFunction{F,P},
     dims::NTuple{N,Int},
     alg::AbstractSDEAlgorithm;
+    dt::AbstractFloat,
     kwargs...,
 ) where {F,P,N}
     x = sample_prior(d, dims)
-    prob = get_backward_diffeq(d, score_fn, x, (1, 0))
-    sol = solve(prob, alg; kwargs...)
+    prob = get_backward_diffeq(d, score_fn, x, (1.0, 0.0))
+    sol = solve(prob, alg; dt=dt, kwargs...)
     return sol
 end
 
@@ -189,10 +191,10 @@ function denoising_loss_fn(
     p=nothing,
     eps=1.0f-5,
 ) where {F,P}
-    t = rand(size(x, ndims(x))) * (1.0 - eps) + eps
+    t = rand(size(x, ndims(x))) .* (1.0 - eps) .+ eps
     marginal_dist = marginal(d, x, t)
     z = randn!(similar(x))
-    perturbed_data = marginal_dist.mean .+ margin.std .* z
+    perturbed_data = marginal_dist.mean .+ marginal_dist.std .* z
 
     model = score_fn.model
     parameterisation = score_fn.parameterisation
@@ -202,5 +204,5 @@ function denoising_loss_fn(
     pred = model(perturbed_data, p, t)
 
     losses = (pred .- target) .^ 2
-    return mean(losses; dims=1:(ndims(losses) - 1))
+    return mean(losses) #mean(losses; dims=1:(ndims(losses) - 1))
 end

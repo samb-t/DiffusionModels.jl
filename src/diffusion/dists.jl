@@ -1,20 +1,20 @@
 
 struct MdNormal{T<:Real, Mean<:AbstractArray, StdDev<:AbstractArray} <: AbstractMvNormal
-    μ::Mean
-    σ::StdDev
+    mean::Mean
+    std::StdDev
 end
 
-function MdNormal(μ::AbstractArray{T, N}, σ::AbstractArray{T, N}) where {T, N}
-    size(μ) == size(σ) || throw(DimensionMismatch("The dimensions of μ and σ are inconsistent."))
-    MdNormal{T, typeof(μ), typeof(σ)}(μ, σ)
+function MdNormal(mean::AbstractArray{T, N}, std::AbstractArray{T, N}) where {T, N}
+    size(mean) == size(std) || throw(DimensionMismatch("The dimensions of mean and std are inconsistent."))
+    MdNormal{T, typeof(mean), typeof(std)}(mean, std)
 end
 
-function MdNormal(μ::AbstractArray{T, N}, σ::AbstractFloat) where {T, N}
-    σ = ones_like(μ) .* σ
-    MdNormal{T, typeof(μ), typeof(σ)}(μ, σ)
+function MdNormal(mean::AbstractArray{T, N}, std::AbstractFloat) where {T, N}
+    std = ones_like(mean) .* std
+    MdNormal{T, typeof(mean), typeof(std)}(mean, std)
 end
 
-Statistics.mean(d::MdNormal) = d.μ
-Statistics.var(d::MdNormal) = d.σ .^ 2
-Statistics.std(d::MdNormal) = d.σ
-Base.rand(d::MdNormal) = d.μ .+ d.σ .* randn!(similar(d.σ))
+Statistics.mean(d::MdNormal) = d.mean
+Statistics.var(d::MdNormal) = d.std .^ 2
+Statistics.std(d::MdNormal) = d.std
+Base.rand(d::MdNormal) = d.mean .+ d.std .* randn!(similar(d.std))
