@@ -181,9 +181,9 @@ end
 
 Abstract type for Gaussian diffusions.
 
-``math
+```math
 dx = f(x, t)dt + g(t)dw
-``
+```
 
 where `f` is the drift and `g` is the diffusion coefficient.
 """
@@ -278,7 +278,11 @@ function get_diffeq_function(d::AbstractGaussianDiffusion)
 end
 
 @doc raw"""
-    get_forward_diffeq(d::AbstractGaussianDiffusion, x::AbstractArray, tspan::Tuple{AbstractFloat,AbstractFloat})
+    get_forward_diffeq(
+        d::AbstractGaussianDiffusion,
+        x::AbstractArray,
+        tspan::Tuple{AbstractFloat,AbstractFloat},
+    )
 
 Return the forward `SDEProblem` for the Gaussian diffusion model.
 """
@@ -294,7 +298,12 @@ function get_forward_diffeq(
 end
 
 @doc raw"""
-    get_backward_diffeq(d::AbstractGaussianDiffusion, score_fn::ScoreFunction{F,P}, x::AbstractArray, tspan::Tuple{AbstractFloat,AbstractFloat})
+    get_backward_diffeq(
+        d::AbstractGaussianDiffusion,
+        score_fn::ScoreFunction{F,P},
+        x::AbstractArray,
+        tspan::Tuple{AbstractFloat,AbstractFloat},
+    )
 
 Return the backward `SDEProblem` for the Gaussian diffusion model.
 """
@@ -314,7 +323,14 @@ function get_backward_diffeq(
 end
 
 @doc raw"""
-    sample(d::AbstractGaussianDiffusion, score_fn::ScoreFunction{F,P}, dims::NTuple{N,Int}, alg::AbstractSDEAlgorithm; dt::AbstractFloat, kwargs...)
+    sample(
+        d::AbstractGaussianDiffusion,
+        score_fn::ScoreFunction{F,P},
+        dims::NTuple{N,Int},
+        alg::AbstractSDEAlgorithm;
+        dt::AbstractFloat,
+        kwargs...
+    )
 
 Sample from the Gaussian diffusion model using the specified `score_fn` and `alg`.
 """
@@ -335,7 +351,13 @@ end
 # TODO: Store dims within GaussianDiffusion? I think yes
 
 @doc raw"""
-    denoising_loss_fn(d::AbstractGaussianDiffusion, x::AbstractArray, score_fn::ScoreFunction{F,P}; p=nothing, eps=1.0f-5)
+    denoising_loss_fn(
+        d::AbstractGaussianDiffusion,
+        x::AbstractArray,
+        score_fn::ScoreFunction{F,P};
+        p=nothing,
+        eps=1.0f-5,
+    )
 
 Return the denoising loss for the Gaussian diffusion model.
 """

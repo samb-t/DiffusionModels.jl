@@ -75,13 +75,12 @@ A variance preserving (VP) forward process `VPNoiseSchedule <: AbstractGaussianN
 either in terms of `marginal_mean_coeff` (``\alpha``) and `marginal_std_coeff` (``\sigma``),
 or by defining `log_snr`, the log-SNR ``\lambda_t``. ``\alpha`` and ``\sigma`` then get calculated
 
-``math
+```math
     \alpha^2 = \text{sigmoid}(\lambda_t)
-``
-
-``math
+```
+```math
     \sigma^2 = \text{sigmoid}(-\lambda_t)
-``
+```
 
 where ``\lambda_t = \log(\alpha_t^2/\sigma_t^2)``.
 
@@ -107,21 +106,21 @@ this function returns the drift coefficient `f(x, t)` at time `t`.
 
 For the SDE we define
 
-``math
+```math
 dx = f(x, t)dt + g(t) dw
-``
+```
 
 These can be defined using ``\beta(t)``
 
-``math
-β(t) = d/dt log(1 + e^{-λₜ})
-``
+```math
+β(t) = \frac{d}{dt} log(1 + e^{-λₜ})
+```
 
 For the VP case,
 
-``math
+```math
 f(x, t) = -0.5 \beta(t) x \qquad \text{and} \quad g(t) = \beta(t)
-``
+```
 
 ## Example
 

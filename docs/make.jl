@@ -18,12 +18,17 @@ pages = [
             "examples/lux_examples/1_lux_gaussian_diffusion.md",
         ],
     ],
-    # "Manual" => [
-    #     "manual/interface.md",
-    # ],
+    "Manual" => [
+        "Overview" => "manual/index.md",
+    ],
     "API" => [
-        "api/noise_schedules.md",
-        "api/gaussian_diffusion.md",
+        "Gaussian Diffusion" => [
+            "api/gaussian_diffusion/noise_schedules.md",
+            "api/gaussian_diffusion/score_parameterisations.md",
+            "api/gaussian_diffusion/gaussian_diffusion.md",
+        ],
+        "api/jump_diffusion.md",
+        "api/categorical_diffusion.md",
     ]
 ]
 
