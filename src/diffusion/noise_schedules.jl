@@ -33,7 +33,7 @@ abstract type VENoiseSchedule <: AbstractGaussianNoiseSchedule end
     marginal_mean_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractFloat)
     marginal_mean_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractVector)
 
-For a Gaussian diffusion model with marginal distribution ``x_t = \alpha_t\cdot\x_0 + \sigma_t\cdot\epsilon``,
+For a Gaussian diffusion model with marginal distribution ``x_t = \alpha_t\cdot x_0 + \sigma_t\cdot\epsilon``,
 this function returns ``\alpha_t``, the mean of the marginal distribution at time `t`.
 
 ## Variance Preserving
@@ -142,7 +142,7 @@ function diffusion_coeff end
 @doc raw"""
     log_snr(s::AbstractGaussianNoiseSchedule, t::AbstractFloat)
 
-For a Gaussian diffusion model with marginal distribution ``x_t = \alpha_t\cdot\x_0 + \sigma_t\cdot\epsilon``,
+For a Gaussian diffusion model with marginal distribution ``x_t = \alpha_t\cdot x_0 + \sigma_t\cdot\epsilon``,
 this function returns the log signal-to-noise ratio (SNR) at time ``t``: ``λ_t = \log(\alpha_t^2/\sigma_t^2)``.
 
 ## Example
@@ -205,8 +205,8 @@ function marginal_std_coeff(s::VPNoiseSchedule, t::AbstractFloat)
     return sqrt(sigmoid(-λₜ))
 end
 
-function marginal_mean_coeff(::VENoiseSchedule, ::AbstractFloat)
-    return 1
+function marginal_mean_coeff(::VENoiseSchedule, ::T) where {T<:AbstractFloat}
+    return T(1)
 end
 
 function marginal_std_coeff(s::VENoiseSchedule, t::AbstractFloat)
@@ -220,40 +220,64 @@ end
 
 # TODO: Think of better names than drift/diffusion so it makes more sense
 # to apply to the discrete state space too.
-function drift_coeff(s::VPNoiseSchedule, t::AbstractFloat)
-    return -0.5 * beta(s, t)
+function drift_coeff(s::VPNoiseSchedule, t::T) where {T<:AbstractFloat}
+    return -beta(s, t) / 2
 end
 
 function diffusion_coeff(s::VPNoiseSchedule, t::AbstractFloat)
     return sqrt(beta(s, t))
 end
 
-function drift_coeff(::VENoiseSchedule, ::AbstractFloat)
-    return 0
+function drift_coeff(::VENoiseSchedule, ::T) where {T<:AbstractFloat}
+    return T(0)
 end
 
 function diffusion_coeff(s::VENoiseSchedule, t::AbstractFloat)
     return sqrt(beta(s, t))
 end
 
-@kwdef struct CosineSchedule{T<:AbstractFloat} <: VPNoiseSchedule
-    t_start::T = 0.0
-    t_end::T = 1.0
-    tau::T = 1.0
-    clip_min::T = 1e-9
-    # shift::T=0.0
+@doc raw"""
+    CosineSchedule{AbstractFloat}()
+
+A variance preserving (VP) noise schedule... [nichol2021improved](@cite)
+
+## Example
+
+```jldoctest
+julia> s = CosineSchedule()
+julia> marginal_mean_coeff(s, 0.3)
+0.8910065241883679
+```
+"""
+struct CosineSchedule{T<:AbstractFloat} <: VPNoiseSchedule
+    # tau::T = 1.0
+    # clip_min::T = 1e-9
+    # shift::T = 0.0
 end
 
 # TODO: Use beta in here instead?
-function log_snr(s::CosineSchedule, t::AbstractFloat)
+function log_snr(::CosineSchedule{T}, t::T) where {T<:AbstractFloat}
     return -2 * log(tan(π * t / 2)) # + 2 * s.shift
 end
 
 # TODO: use shift in here
-function beta(s::CosineSchedule, t::AbstractFloat)
-    return π * s.tau * tan(π * t / 2)
+function beta(::CosineSchedule{T}, t::T) where {T<:AbstractFloat}
+    return π * tan(π * t / 2)
 end
 
+@doc raw"""
+    LinearSchedule{AbstractFloat}(beta_start::AbstractFloat=0.1, beta_end::AbstractFloat=20.0, clip_min::AbstractFloat=1e-9)
+
+A variance preserving (VP) noise schedule... [ho2020denoising](@cite)
+
+## Example
+
+```jldoctest
+julia> s = LinearSchedule()
+julia> marginal_mean_coeff(s, 0.3)
+0.6295500003364489
+```
+"""
 @kwdef struct LinearSchedule{T<:AbstractFloat} <: VPNoiseSchedule
     beta_start::T = 0.1
     beta_end::T = 20.0
@@ -261,26 +285,40 @@ end
 end
 
 # TODO: Can this be simplified?
-function log_snr(s::LinearSchedule, t::AbstractFloat)
+function log_snr(s::LinearSchedule{T}, t::T) where {T<:AbstractFloat}
     alpha_bar = exp(-0.5 * t^2 * (s.beta_end - s.beta_start) - t * s.beta_start)
     snr = alpha_bar / (1 - alpha_bar)
     return log(snr)
 end
 
-function beta(s::LinearSchedule, t::AbstractFloat)
+function beta(s::LinearSchedule{T}, t::T) where {T<:AbstractFloat}
     return s.beta_start + t * (s.beta_end - s.beta_start)
 end
 
 # Used in "On the Importance of Noise Scheduling for Diffusion Models"
 # This is also the schedule used in Absorbing Diffusion
 # Originally from "Deep unsuper-vised learning using nonequilibrium thermodynamics"
-struct LinearMutualInfoSchedule <: VPNoiseSchedule end
 
-function log_snr(::LinearMutualInfoSchedule, t::AbstractFloat)
+@doc raw"""
+    LinearMutualInfoSchedule{AbstractFloat}()
+
+A variance preserving (VP) noise schedule... [chen2023importance](@cite)
+
+## Example
+
+```jldoctest
+julia> s = LinearMutualInfoSchedule()
+julia> marginal_mean_coeff(s, 0.3)
+0.8366600265340756
+```
+"""
+struct LinearMutualInfoSchedule{T<:AbstractFloat} <: VPNoiseSchedule end
+
+function log_snr(::LinearMutualInfoSchedule{T}, t::T) where {T<:AbstractFloat}
     return log((1 - t) / t)
 end
 
-function beta(::LinearMutualInfoSchedule, t::AbstractFloat)
+function beta(::LinearMutualInfoSchedule{T}, t::T) where {T<:AbstractFloat}
     return 1 / (1 - t)
 end
 
@@ -294,7 +332,7 @@ end
 # end
 
 # TODO: Add tau
-function beta(schedule::SigmoidSchedule, t::AbstractFloat)
+function beta(schedule::SigmoidSchedule{T}, t::T) where {T<:AbstractFloat}
     output =
         (schedule.t_end - schedule.t_start) -
         (schedule.t_end - schedule.t_start) /

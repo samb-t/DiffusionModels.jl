@@ -1,4 +1,5 @@
 using Documenter, DocumenterVitepress, Pkg
+using DocumenterCitations
 using DiffusionModels
 
 #! format: off
@@ -11,18 +12,12 @@ pages = [
         # "Resources" => "introduction/resources.md",
         # "Citation" => "introduction/citation.md"
     ],
-    # "Tutorials" => [
-    #     "Overview" => "tutorials/index.md",
-    #     "Beginner" => [
-    #         "tutorials/beginner/1_Basics.md",
-    #     ],
-    #     "Intermediate" => [
-    #         "tutorials/intermediate/1.md",
-    #     ],
-    #     "Advanced" => [
-    #         "tutorials/advanced/1.md"
-    #     ]
-    # ],
+    "Examples" => [
+        "Overview" => "examples/index.md",
+        "Lux" => [
+            "examples/lux_examples/1_lux_gaussian_diffusion.md",
+        ],
+    ],
     # "Manual" => [
     #     "manual/interface.md",
     # ],
@@ -40,6 +35,10 @@ pages = [
 # deploy_decision = Documenter.deploy_folder(deploy_config; repo="github.com/samb-t/DiffusionModels.jl",
 #     devbranch="main", devurl="dev", push_preview=true)
 
+bib = CitationBibliography(
+    joinpath(@__DIR__, "src", "refs.bib");
+    style=:numeric
+)
 makedocs(;
     sitename="DiffusionModels.jl Docs",
     authors="Sam Bond-Taylor et al.",
@@ -60,6 +59,7 @@ makedocs(;
         # deploy_decision,
     ),
     draft=false,
+    plugins=[bib],
     pages,
 )
 

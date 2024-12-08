@@ -2,7 +2,7 @@
 CollapsedDocStrings = true
 ```
 
-# Noise Schdedules
+# Noise Schedules
 
 ## Abstract Types
 
@@ -28,4 +28,12 @@ DiffusionModels.beta
 
 ## Schedules
 
-TODO
+```@docs
+DiffusionModels.CosineSchedule
+DiffusionModels.LinearSchedule
+DiffusionModels.LinearMutualInfoSchedule
+```
+
+
+```@bibliography
+```
