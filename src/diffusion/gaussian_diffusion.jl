@@ -251,17 +251,20 @@ end
 # TODO: Should the -0.5 here be pulled into the schedule?
 
 @doc raw"""
-    sample_prior(d::AbstractGaussianDiffusion, dims::Tuple{N, Int})
+    sample_prior(d::GaussianDiffusion, dims::Tuple{N, Int})
 
 Sample from the prior distribution of the Gaussian diffusion model.
 """
-function sample_prior(d::AbstractGaussianDiffusion, dims::Tuple{N,Int}) where {N}
+function sample_prior(d::GaussianDiffusion{S}, dims::Tuple{N,Int}) where {S,N}
     # Works for now but should have a better solution
     T = S.parameters[1]
     # NOTE: This way the mean is actually very close to 0 but not quite for some schedules.
     # More of a schedule problem than this function though
-    return marginal(d, ones(T, dims), ones(T, dims[end]))
+    prior = marginal(d, ones(T, dims), ones(T, dims[end]))
+    sample = rand(prior)
+    return sample
 end
+# TODO: If all other functions are on AbstractGaussianDiffusion, this should be too.
 # TODO: Need device, dtype etc.
 
 @doc raw"""
