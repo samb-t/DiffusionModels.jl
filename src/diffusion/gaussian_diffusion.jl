@@ -5,10 +5,58 @@
 #       - as SciMLBase.DiscreteProblem
 #       - DiscreteProblem(f::ODEFunction, u0, tspan) is already allowed
 
-"""
-    Score ∇ₓlog p(x) ≈ s(xₜ,t,θ) = f(xₜ,t,θ)
+@doc raw"""
+    AbstractScoreParameterisation
+
+Abstract type for parameterisations of the score function ``\nabla_x \log p(x)``.
+
+Diffusion models are typically not trained to directly predict the score, but are
+trained with different objectives that result in higher sample quality or are
+more stable to optimise.
+
+`AbstractScoreParameterisation`s are used for the following reasons:
+- to define a `get_target` method that returns the target used in the training
+  objective.
+- to define a `ScoreFunction` that takes the model and the parameterisation
+  and returns the score.
 """
 abstract type AbstractScoreParameterisation <: AbstractModelParameterisation end
+
+@doc raw"""
+    get_target(
+        parameterisation::AbstractScoreParameterisation,
+        x_start::AbstractArray,
+        noise::AbstractArray,
+        t::AbstractVector,
+    )
+
+Return the target used in the training objective.
+
+## Arguments
+- `parameterisation::AbstractScoreParameterisation`: The parameterisation of the score function.
+- `x_start::AbstractArray`: The initial data.
+- `noise::AbstractArray`: The noise.
+- `t::AbstractVector`: The time points.
+
+## Returns
+- `target::AbstractArray`: The target used in the training objective.
+
+## Example
+
+```jldoctest
+julia> schedule = CosineSchedule{Float32}()
+julia> parameterisation = NoiseScoreParameterisation(schedule)
+julia> x_start = randn(Float32, 10, 3)
+julia> noise = randn(Float32, 10, 3)
+julia> t = rand(Float32, 3)
+julia> target = get_target(parameterisation, x_start, noise, t)
+julia> size(target)
+(10, 3)
+julia> target == noise
+true
+```
+"""
+function get_target end
 
 @required AbstractScoreParameterisation begin
     get_target(
@@ -76,6 +124,37 @@ function get_target(
     return v
 end
 
+@doc raw"""
+    ScoreFunction(model, parameterisation<:AbstractScoreParameterisation)
+    (::ScoreFunction)(x, p, t)
+
+Takes a model trained to predict the specified `parameterisation`. When
+called, returns the score.
+
+## Arguments
+
+- `model`: The model trained to predict the specified `parameterisation`.
+- `parameterisation`: The parameterisation of the score function.
+
+## Returns
+
+- `score::AbstractArray`: The score.
+
+## Example
+
+```jldoctest
+julia> model = (x,p,t) -> x
+julia> schedule = CosineSchedule{Float32}()
+julia> parameterisation = StartScoreParameterisation(schedule)
+julia> score_fn = ScoreFunction(model, parameterisation)
+julia> x = randn(Float32, 10, 3)
+julia> p = nothing
+julia> t = rand(Float32, 3)
+julia> score = score_fn(x, p, t)
+julia> size(score)
+(10, 3)
+```
+"""
 struct ScoreFunction{F,P<:AbstractScoreParameterisation}
     model::F
     parameterisation::P
@@ -97,18 +176,54 @@ function (f::ScoreFunction{F,P})(x, p, t) where {F,P<:VPredictScoreParameterisat
     return -(f.model(x, p, t) .+ sigma_t) ./ (alpha_t .* sigma_t)
 end
 
+@doc raw"""
+    AbstractGaussianDiffusion
+
+Abstract type for Gaussian diffusions.
+
+``math
+dx = f(x, t)dt + g(t)dw
+``
+
+where `f` is the drift and `g` is the diffusion coefficient.
+"""
+abstract type AbstractGaussianDiffusion <: AbstractDiffusion end
+
 # NOTE: RequiredInterfaces doesn't support all of these function definitions yet
 
 # TODO: Pop dims and tspan in here and use the @concrete macro?
-struct VPDiffusion{S<:VPNoiseSchedule} <: AbstractGaussianDiffusion
+@doc raw"""
+    GaussianDiffusion(schedule::AbstractGaussianNoiseSchedule)
+
+A Gaussian diffusion model with a specified noise schedule. The noise schedule
+is used to define the drift and diffusion coefficients.
+
+## Example
+
+```jldoctest
+julia> schedule = CosineSchedule{Float32}()
+julia> diffusion = GaussianDiffusion(schedule)
+julia> x_start = randn(Float32, 10, 3)
+julia> t = rand(Float32, 3)
+julia> dist = marginal(diffusion, x_start, t)
+julia> size(mean(dist))
+(10, 3)
+julia> size(std(dist))
+(10, 3)
+```
+"""
+struct GaussianDiffusion{S<:AbstractGaussianNoiseSchedule} <: AbstractGaussianDiffusion
     schedule::S
 end
 
-struct VEDiffusion{S<:VENoiseSchedule} <: AbstractGaussianDiffusion
-    schedule::S
-end
+# TODO: Should all funcs below be defined based on AbstractGaussianDiffusion or GaussianDiffusion{S}???
 
-function marginal(d::VPDiffusion, x_start::AbstractArray, t::AbstractVector)
+@doc raw"""
+    marginal(d::AbstractGaussianDiffusion, x_start::AbstractArray, t::AbstractVector)
+
+Return the marginal distribution at time `t` given the initial data `x_start`.
+"""
+function marginal(d::AbstractGaussianDiffusion, x_start::AbstractArray, t::AbstractVector)
     shape = ((1 for _ in 1:(ndims(x_start) - 1))..., length(t))
 
     mean_coeff = marginal_mean_coeff(d.schedule, t)
@@ -123,23 +238,47 @@ function marginal(d::VPDiffusion, x_start::AbstractArray, t::AbstractVector)
     return MdNormal(mean, std)
 end
 
-function get_drift_diffusion(d::VPDiffusion)
+@doc raw"""
+    get_drift_diffusion(d::AbstractGaussianDiffusion)
+
+Return the drift and diffusion functions for the Gaussian diffusion model.
+"""
+function get_drift_diffusion(d::AbstractGaussianDiffusion)
     drift(x, p, t) = -0.5 .* drift_coeff(d.schedule, t) .* x
     diffusion(x, p, t) = diffusion_coeff(d.schedule, t)
     return drift, diffusion
 end
+# TODO: Should the -0.5 here be pulled into the schedule?
 
-# TODO: Not true! For VE Diffusion this is much larger!
-# TODO: Need device etc.
-function sample_prior(d::AbstractGaussianDiffusion, dims::Tuple{N, Int}; kwargs...) where N
-    return randn(dims, kwargs...)
+@doc raw"""
+    sample_prior(d::AbstractGaussianDiffusion, dims::Tuple{N, Int})
+
+Sample from the prior distribution of the Gaussian diffusion model.
+"""
+function sample_prior(d::AbstractGaussianDiffusion, dims::Tuple{N,Int}) where {N}
+    # Works for now but should have a better solution
+    T = S.parameters[1]
+    # NOTE: This way the mean is actually very close to 0 but not quite for some schedules.
+    # More of a schedule problem than this function though
+    return marginal(d, ones(T, dims), ones(T, dims[end]))
 end
+# TODO: Need device, dtype etc.
 
+@doc raw"""
+    get_diffeq_function(d::AbstractGaussianDiffusion)
+
+Return the `SDEfunction` for the Gaussian diffusion model.
+"""
 function get_diffeq_function(d::AbstractGaussianDiffusion)
     drift, diffusion = get_drift_diffusion(d)
     return SDEFunction(drift, diffusion)
 end
 
+@doc raw"""
+    get_forward_diffeq(d::AbstractGaussianDiffusion, x::AbstractArray, tspan::Tuple{AbstractFloat,AbstractFloat})
+
+Return the forward `SDEProblem` for the Gaussian diffusion model.
+"""
 function get_forward_diffeq(
     d::AbstractGaussianDiffusion,
     x::AbstractArray,
@@ -151,6 +290,11 @@ function get_forward_diffeq(
     return prob
 end
 
+@doc raw"""
+    get_backward_diffeq(d::AbstractGaussianDiffusion, score_fn::ScoreFunction{F,P}, x::AbstractArray, tspan::Tuple{AbstractFloat,AbstractFloat})
+
+Return the backward `SDEProblem` for the Gaussian diffusion model.
+"""
 function get_backward_diffeq(
     d::AbstractGaussianDiffusion,
     score_fn::ScoreFunction{F,P},
@@ -166,8 +310,11 @@ function get_backward_diffeq(
     return prob
 end
 
-# TODO: dtype and device
-# TODO: Store dims within GaussianDiffusion? I think yes
+@doc raw"""
+    sample(d::AbstractGaussianDiffusion, score_fn::ScoreFunction{F,P}, dims::NTuple{N,Int}, alg::AbstractSDEAlgorithm; dt::AbstractFloat, kwargs...)
+
+Sample from the Gaussian diffusion model using the specified `score_fn` and `alg`.
+"""
 function sample(
     d::AbstractGaussianDiffusion,
     score_fn::ScoreFunction{F,P},
@@ -181,9 +328,14 @@ function sample(
     sol = solve(prob, alg; dt=dt, kwargs...)
     return sol
 end
+# TODO: dtype and device
+# TODO: Store dims within GaussianDiffusion? I think yes
 
-# TODO: Don't think you should need to pass in d here. Use
-# score_fn.parameterisation.schedule instead
+@doc raw"""
+    denoising_loss_fn(d::AbstractGaussianDiffusion, x::AbstractArray, score_fn::ScoreFunction{F,P}; p=nothing, eps=1.0f-5)
+
+Return the denoising loss for the Gaussian diffusion model.
+"""
 function denoising_loss_fn(
     d::AbstractGaussianDiffusion,
     x::AbstractArray,
@@ -206,3 +358,5 @@ function denoising_loss_fn(
     losses = (pred .- target) .^ 2
     return mean(losses) #mean(losses; dims=1:(ndims(losses) - 1))
 end
+# TODO: Don't think you should need to pass in d here. Use
+# score_fn.parameterisation.schedule instead

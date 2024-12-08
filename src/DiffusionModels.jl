@@ -43,7 +43,7 @@ module DiffusionModels
     export AbstractGaussianDiffusion
     export AbstractCategoricalDiffusion
 
-    export VPDiffusion
+    export GaussianDiffusion
     export CriticallyDampedDiffusion
     export DimensionalJumpDiffusion
     # export VPDiffusion, VEDiffusion, CriticallyDampedDiffusion, BlurringDiffusion,

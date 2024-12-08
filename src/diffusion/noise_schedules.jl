@@ -106,12 +106,22 @@ For a Gaussian diffusion model with SDE ``dx = f(x, t)dt + g(t)dw``,
 this function returns the drift coefficient `f(x, t)` at time `t`.
 
 For the SDE we define
-    dx = f(x, t)dt + g(t) dw
-These can be defined using β(t)
-    β(t) = d/dt log(1 + e^{-λₜ})
+
+``math
+dx = f(x, t)dt + g(t) dw
+``
+
+These can be defined using ``\beta(t)``
+
+``math
+β(t) = d/dt log(1 + e^{-λₜ})
+``
 
 For the VP case,
-    f(x, t) = -0.5 β(t) x    and    g(t) = β(t)
+
+``math
+f(x, t) = -0.5 \beta(t) x \qquad \text{and} \quad g(t) = \beta(t)
+``
 
 ## Example
 

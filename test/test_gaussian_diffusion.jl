@@ -68,16 +68,16 @@ end
     end
 end
 
-@testsnippet VPDiffusionSetup begin
+@testsnippet GaussianDiffusionSetup begin
     schedule = CosineSchedule{Float64}()
-    diffusion_model = VPDiffusion(schedule)
+    diffusion_model = GaussianDiffusion(schedule)
     x_start = randn(Xoshiro(0), 10, 3)
     noise = randn(Xoshiro(1), 10, 3)
     t = rand(Xoshiro(2), 3)
 end
 
 
-@testitem "Test marginal(::VPDiffusion, ...)" setup=[SharedTestSetup, VPDiffusionSetup] begin
+@testitem "Test marginal(::GaussianDiffusion, ...)" setup=[SharedTestSetup, GaussianDiffusionSetup] begin
     p_x_t = marginal(diffusion_model, x_start, t)
     @test p_x_t isa MdNormal
     @test size(mean(p_x_t)) == size(x_start)
@@ -92,7 +92,7 @@ end
 # TODO: add some for sample sample_prior
 # Definitely needs fixing
 
-@testitem "Test get_drift_diffusion(::VPDiffusion, ...)" setup=[SharedTestSetup, VPDiffusionSetup] begin
+@testitem "Test get_drift_diffusion(::GaussianDiffusion, ...)" setup=[SharedTestSetup, GaussianDiffusionSetup] begin
     drift_fn, diffusion_fn = get_drift_diffusion(diffusion_model)
     @test drift_fn isa Function
     @test diffusion_fn isa Function
@@ -108,7 +108,7 @@ end
     end
 end
 
-@testitem "Test get_diffeq_function(::VPDiffusion, ...)" setup=[SharedTestSetup, VPDiffusionSetup] begin
+@testitem "Test get_diffeq_function(::GaussianDiffusion, ...)" setup=[SharedTestSetup, GaussianDiffusionSetup] begin
     sde_func = get_diffeq_function(diffusion_model)
     @test sde_func isa SDEFunction
 
@@ -119,7 +119,7 @@ end
     end
 end
 
-@testitem "Test get_forward_diffeq(::VPDiffusion, ...)" setup=[SharedTestSetup, VPDiffusionSetup] begin
+@testitem "Test get_forward_diffeq(::GaussianDiffusion, ...)" setup=[SharedTestSetup, GaussianDiffusionSetup] begin
     prob = get_forward_diffeq(diffusion_model, x_start, (0.0, 1.0))
     @test prob isa SDEProblem
     @test prob.u0 == x_start
@@ -133,7 +133,7 @@ end
     end
 end
 
-@testitem "Test get_backward_diffeq(::VPDiffusion, ...)" setup=[SharedTestSetup, VPDiffusionSetup] begin
+@testitem "Test get_backward_diffeq(::GaussianDiffusion, ...)" setup=[SharedTestSetup, GaussianDiffusionSetup] begin
     score_fn = ScoreFunction((x,p,t) -> x, NoiseScoreParameterisation(schedule))
     prob = get_backward_diffeq(diffusion_model, score_fn, noise, (1.0, 0.0))
     @test prob isa SDEProblem
@@ -158,7 +158,7 @@ end
     end
 end
 
-@testitem "Test sample(::VPDiffusion, ...)" setup=[SharedTestSetup, VPDiffusionSetup] begin
+@testitem "Test sample(::GaussianDiffusion, ...)" setup=[SharedTestSetup, GaussianDiffusionSetup] begin
     alg = EM()
     score_fn = ScoreFunction((x,p,t) -> x, NoiseScoreParameterisation(schedule))
     sol = sample(diffusion_model, score_fn, size(x_start), alg, dt=1e-3)
@@ -172,7 +172,7 @@ end
     end
 end
 
-@testitem "Test denoising_loss_fn(::VPDiffusion, ...)" setup=[SharedTestSetup, VPDiffusionSetup] begin
+@testitem "Test denoising_loss_fn(::GaussianDiffusion, ...)" setup=[SharedTestSetup, GaussianDiffusionSetup] begin
     score_fn = ScoreFunction((x,p,t) -> x_start, StartScoreParameterisation(schedule))
     loss = denoising_loss_fn(diffusion_model, noise, score_fn)
     @test loss isa AbstractFloat

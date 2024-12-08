@@ -5,7 +5,7 @@ using DiffusionModels
 #! format: off
 
 pages = [
-    "DiffusionModels.jl" => "index.md",
+    "Home" => "index.md",
     "Getting Started" => [
         "Introduction" => "introduction/index.md",
         # "Overview" => "introduction/overview.md",
@@ -21,11 +21,9 @@ pages = [
     # "Manual" => [
     #     "manual/interface.md",
     # ],
-    "API Reference" => [
-        "DiffusionModels" => [
-            "api/noise_schedules.md",
-            "api/gaussian_diffusion.md",
-        ],
+    "API" => [
+        "api/noise_schedules.md",
+        "api/gaussian_diffusion.md",
     ]
 ]
 
@@ -40,7 +38,7 @@ bib = CitationBibliography(
     style=:numeric
 )
 makedocs(;
-    sitename="DiffusionModels.jl Docs",
+    sitename="DiffusionModels",
     authors="Sam Bond-Taylor et al.",
     clean=false, # true
     doctest=false,  # We test it in the CI, no need to run it here
