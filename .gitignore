@@ -1,4 +1,12 @@
 /Manifest.toml
 examples/*/Manifest.toml
 test/Manifest.toml
+docs/Manifest.toml
 .vscode/settings.json
+
+docs/build/
+docs/docs/
+docs/site/
+docs/node_modules/
+docs/package-lock.json
+docs/package.json

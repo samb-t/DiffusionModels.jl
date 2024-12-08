@@ -1,26 +1,27 @@
-"""
-    Critically Damped Diffusion Process from [1]
-        [dxₜ  dvₜ] = [M⁻¹vₜ  -xₜ]β dt + [0  -ΓM⁻¹vₜ]β dt + [0  √(2Γβ)] dw
-                     |______  ______|   |______________  _______________|
-                            ||                         || 
-                  Hamiltonian component     Ornstein-Uhlbeck process
+# """
+#     Critically Damped Diffusion Process from [1]
+#         [dxₜ  dvₜ] = [M⁻¹vₜ  -xₜ]β dt + [0  -ΓM⁻¹vₜ]β dt + [0  √(2Γβ)] dw
+#                      |______  ______|   |______________  _______________|
+#                             ||                         ||
+#                   Hamiltonian component     Ornstein-Uhlbeck process
 
-    Runs diffusion in an augmented space with "velocities" vₜ. Noise is applied
-    in velocity space rather than in data space xₜ resulting in a smoother
-    diffusion that is easier to learn and sample from.
+#     Runs diffusion in an augmented space with "velocities" vₜ. Noise is applied
+#     in velocity space rather than in data space xₜ resulting in a smoother
+#     diffusion that is easier to learn and sample from.
 
-    Adapted from https://github.com/nv-tlabs/CLD-SGM
+#     Adapted from https://github.com/nv-tlabs/CLD-SGM
 
-    Args:
-        `schedule::VPNoiseSchedule`: A variance preserving noise schedule.
-        `score_fn` (optional): The score function ∇log p(xₜ).
-        `m_inv` (optional): The inverse mass M⁻¹.
-        `dim` (optional): Dimension to split u into x and v e.g. for images dim=3.
-        `gamma` (optional): How noisy the initial velocity is, p(v₀)=N(0,γMI).
+#     Args:
+#         `schedule::VPNoiseSchedule`: A variance preserving noise schedule.
+#         `score_fn` (optional): The score function ∇log p(xₜ).
+#         `m_inv` (optional): The inverse mass M⁻¹.
+#         `dim` (optional): Dimension to split u into x and v e.g. for images dim=3.
+#         `gamma` (optional): How noisy the initial velocity is, p(v₀)=N(0,γMI).
 
-    [1] Score-Based Generative Modeling with Critically-Damped Langevin Diffusion
-        Dockhorn et al. ICLR 2022.
-"""
+#     [1] Score-Based Generative Modeling with Critically-Damped Langevin Diffusion
+#         Dockhorn et al. ICLR 2022.
+# """
+
 struct CriticallyDampedDiffusion{T} <: AbstractGaussianDiffusion
     schedule::VPNoiseSchedule
     score_fn::T
@@ -30,7 +31,7 @@ struct CriticallyDampedDiffusion{T} <: AbstractGaussianDiffusion
 end
 
 function CriticallyDampedDiffusion(
-    schedule::VPNoiseSchedule; 
+    schedule::VPNoiseSchedule;
     score_fn::T=nothing,
     m_inv=4.0,
     dim=1,
@@ -60,8 +61,8 @@ function get_drift_diffusion(d::CriticallyDampedDiffusion)
 end
 
 function marginal(
-    d::CriticallyDampedDiffusion, 
-    x_start::AbstractArray, 
+    d::CriticallyDampedDiffusion,
+    x_start::AbstractArray,
     t::AbstractVector
 )
     x, v = chunk(x_start, 2, dims=d.dim)
@@ -84,11 +85,11 @@ function marginal(
 
     # Calculate "per-dimension" covariance matrix
     multiplier = coeff_mean .^ 2
-    var_xx = @. var0x + (1 / multiplier) - 1 + 4 * beta_int * g * (var0x - 1) + 
+    var_xx = @. var0x + (1 / multiplier) - 1 + 4 * beta_int * g * (var0x - 1) +
              4 * beta_int ^ 2 * g ^ 2 * (var0x - 2) + 16 * g ^ 4 * beta_int ^ 2 * var0v
-    var_xv = @. -var0x * beta_int + 4 * g ^ 2 * beta_int * var0v - 
+    var_xv = @. -var0x * beta_int + 4 * g ^ 2 * beta_int * var0v -
              2 * g * beta_int ^ 2 * (var0x - 2) - 8 * g ^ 3 * beta_int ^ 2 * var0v
-    var_vv = @. f ^ 2 * ((1 / multiplier) - 1) / 4 + f * beta_int - 4 * g * beta_int * var0v + 
+    var_vv = @. f ^ 2 * ((1 / multiplier) - 1) / 4 + f * beta_int - 4 * g * beta_int * var0v +
              4 * g ^ 2 * beta_int ^ 2 * var0v + var0v + beta_int ^ 2 * (var0x - 2)
     var_xx = var_xx .* multiplier .+ 1e-6
     var_xv = var_xv .* multiplier

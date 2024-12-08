@@ -18,7 +18,7 @@
         @test check_interface_implemented(AbstractScoreParameterisation, ScoreParameterisation)
 
         # TODO: Probably some good way to do this with a mock
-        schedule = CosineSchedule()
+        schedule = CosineSchedule{Float64}()
         parameterisation = ScoreParameterisation(schedule)
         x_start = randn(Xoshiro(0), 10, 3)
         noise = randn(Xoshiro(1), 10, 3)
@@ -46,7 +46,7 @@ end
         # TODO: could use Lux for this
         model = (x,p,t) -> x
         # TODO: Mock the schedule
-        schedule = CosineSchedule()
+        schedule = CosineSchedule{Float64}()
 
         parameterisation = ScoreParameterisation(schedule)
         score_function = ScoreFunction(model, parameterisation)
@@ -69,7 +69,7 @@ end
 end
 
 @testsnippet VPDiffusionSetup begin
-    schedule = CosineSchedule()
+    schedule = CosineSchedule{Float64}()
     diffusion_model = VPDiffusion(schedule)
     x_start = randn(Xoshiro(0), 10, 3)
     noise = randn(Xoshiro(1), 10, 3)
