@@ -22,6 +22,7 @@ pages = [
         "Overview" => "manual/index.md",
     ],
     "API" => [
+        "api/interface.md",
         "Gaussian Diffusion" => [
             "api/gaussian_diffusion/noise_schedules.md",
             "api/gaussian_diffusion/score_parameterisations.md",
