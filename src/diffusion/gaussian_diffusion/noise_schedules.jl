@@ -76,10 +76,10 @@ either in terms of `marginal_mean_coeff` (``\alpha``) and `marginal_std_coeff` (
 or by defining `log_snr`, the log-SNR ``\lambda_t``. ``\alpha`` and ``\sigma`` then get calculated
 
 ```math
-    \alpha^2 = \text{sigmoid}(\lambda_t)
-```
-```math
-    \sigma^2 = \text{sigmoid}(-\lambda_t)
+\begin{aligned}
+    \alpha^2 &= \text{sigmoid}(\lambda_t) \\
+    \sigma^2 &= \text{sigmoid}(-\lambda_t)
+\end{aligned}
 ```
 
 where ``\lambda_t = \log(\alpha_t^2/\sigma_t^2)``.
@@ -101,13 +101,13 @@ function marginal_std_coeff end
 @doc raw"""
     drift_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractFloat)
 
-For a Gaussian diffusion model with SDE ``dx = f(x, t)dt + g(t)dw``,
+For a Gaussian diffusion model with SDE ``dx = f(x, t) x dt + g(t)dw``,
 this function returns the drift coefficient `f(x, t)` at time `t`.
 
 For the SDE we define
 
 ```math
-dx = f(x, t)dt + g(t) dw
+dx = f(x, t) x dt + g(t) dw
 ```
 
 These can be defined using ``\beta(t)``
@@ -135,7 +135,7 @@ function drift_coeff end
 @doc raw"""
     diffusion_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractFloat)
 
-For a Gaussian diffusion model with SDE ``dx = f(x, t)dt + g(t)dw``,
+For a Gaussian diffusion model with SDE ``dx = f(x, t) x dt + g(t)dw``,
 this function returns the diffusion coefficient `g(t)` at time `t`.
 
 ## Example
@@ -354,32 +354,3 @@ end
 # @kwdef struct EDMTrainSchedule{T<:AbstractFloat} <: VENoiseSchedule
 
 # end
-
-## Jump Schedules ##
-
-abstract type AbstractJumpSchedule <: AbstractSchedule end
-
-@kwdef struct ConstantJumpSchedule <: AbstractJumpSchedule
-    max_dim::Int
-    minimum_dims::Int = 1
-    std_mult::AbstractFloat = 0.7
-end
-
-function rate(s::ConstantJumpSchedule, t::AbstractFloat)
-    c = s.max_dim - s.minimum_dims
-    return (2 * c + s.std_mult^2 + sqrt((s.std_mult^2 + 2 * c)^2 - 4 * c^2)) / 2
-end
-
-function rate_integral(s::ConstantJumpSchedule, t::AbstractFloat)
-    return rate(s, t) * t
-end
-
-function rate_integral(schedule::AbstractNoiseSchedule, t::AbstractArray)
-    rate_int(t::AbstractFloat) = rate_integral(schedule, t)
-    return rate_int.(t)
-end
-
-function rate(schedule::AbstractNoiseSchedule, t::AbstractArray)
-    rate_this(t::AbstractFloat) = rate(schedule, t)
-    return rate_t
-end

@@ -33,7 +33,3 @@ DiffusionModels.AbstractNoiseSchedule
 DiffusionModels.AbstractGaussianNoiseSchedule
 DiffusionModels.VPNoiseSchedule
 ```
-
-
-```@bibliography
-```

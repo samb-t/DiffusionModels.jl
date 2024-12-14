@@ -58,7 +58,8 @@ module DiffusionModels
     export denoising_loss_fn
 
     # export FrequencySchedule
-    export ConstantJumpSchedule, rate, rate_integral
+    export AbstractJumpSchedule
+    export ConstantJumpSchedule, jump_rate, jump_rate_integral
     # export get_drift_diffusion, marginal, sample_prior, set_score_fn, get_diffeq_function, get_forward_diffeq, get_backward_diffeq
     export get_jump
     export sample
@@ -74,12 +75,17 @@ module DiffusionModels
     export beta
 
     include("diffusion/base.jl")
-    include("diffusion/noise_schedules.jl")
-    include("diffusion/gaussian_diffusion.jl")
+
+    include("diffusion/gaussian_diffusion/noise_schedules.jl")
+    include("diffusion/gaussian_diffusion/gaussian_diffusion.jl")
+
+
+    include("diffusion/jump_diffusion/jump_schedules.jl")
+    include("diffusion/jump_diffusion/jump_diffusion.jl")
+
     include("diffusion/critically_damped.jl")
     # Removed for now since doesn't work and to remove FFTW dependency.
     # include("blurring_diffusion.jl")
-    include("diffusion/jump_diffusion.jl")
     include("diffusion/dists.jl")
 
 end

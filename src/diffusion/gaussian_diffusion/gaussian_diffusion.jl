@@ -196,7 +196,7 @@ abstract type AbstractGaussianDiffusion <: AbstractDiffusion end
     GaussianDiffusion(schedule::AbstractGaussianNoiseSchedule)
 
 A Gaussian diffusion model with a specified noise schedule. The noise schedule
-is used to define the drift and diffusion coefficients.
+is used to define the drift and diffusion coefficients [song2021score](@cite).
 
 ## Example
 
@@ -218,7 +218,7 @@ end
 
 # TODO: Should all funcs below be defined based on AbstractGaussianDiffusion or GaussianDiffusion{S}???
 
-@doc raw"""
+"""
     marginal(d::AbstractGaussianDiffusion, x_start::AbstractArray, t::AbstractVector)
 
 Return the marginal distribution at time `t` given the initial data `x_start`.
@@ -238,7 +238,7 @@ function marginal(d::AbstractGaussianDiffusion, x_start::AbstractArray, t::Abstr
     return MdNormal(mean, std)
 end
 
-@doc raw"""
+"""
     get_drift_diffusion(d::AbstractGaussianDiffusion)
 
 Return the drift and diffusion functions for the Gaussian diffusion model.
@@ -250,7 +250,7 @@ function get_drift_diffusion(d::AbstractGaussianDiffusion)
 end
 # TODO: Should the -0.5 here be pulled into the schedule?
 
-@doc raw"""
+"""
     sample_prior(d::GaussianDiffusion, dims::Tuple{N, Int})
 
 Sample from the prior distribution of the Gaussian diffusion model.
@@ -267,7 +267,7 @@ end
 # TODO: If all other functions are on AbstractGaussianDiffusion, this should be too.
 # TODO: Need device, dtype etc.
 
-@doc raw"""
+"""
     get_diffeq_function(d::AbstractGaussianDiffusion)
 
 Return the `SDEfunction` for the Gaussian diffusion model.
@@ -277,7 +277,7 @@ function get_diffeq_function(d::AbstractGaussianDiffusion)
     return SDEFunction(drift, diffusion)
 end
 
-@doc raw"""
+"""
     get_forward_diffeq(
         d::AbstractGaussianDiffusion,
         x::AbstractArray,
@@ -297,7 +297,7 @@ function get_forward_diffeq(
     return prob
 end
 
-@doc raw"""
+"""
     get_backward_diffeq(
         d::AbstractGaussianDiffusion,
         score_fn::ScoreFunction{F,P},
@@ -322,7 +322,7 @@ function get_backward_diffeq(
     return prob
 end
 
-@doc raw"""
+"""
     sample(
         d::AbstractGaussianDiffusion,
         score_fn::ScoreFunction{F,P},
@@ -350,7 +350,7 @@ end
 # TODO: dtype and device
 # TODO: Store dims within GaussianDiffusion? I think yes
 
-@doc raw"""
+"""
     denoising_loss_fn(
         d::AbstractGaussianDiffusion,
         x::AbstractArray,

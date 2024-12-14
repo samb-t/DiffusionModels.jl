@@ -1,4 +1,9 @@
 
+@doc raw"""
+    AbstractJumpDiffusion
+
+Abstract type for jump diffusion models. TODO: write docstring.
+"""
 abstract type AbstractJumpDiffusion <: AbstractDiffusion end
 
 # TODO: replace AbstractGaussianDiffusion with AbstractSDEDiffusion
@@ -22,7 +27,7 @@ end
 # TODO: Make fill with missing like get_jump
 function marginal(
     d::DimensionalJumpDiffusion,
-    x_start::AbstractArray, 
+    x_start::AbstractArray,
     t::AbstractFloat,
 )
     # 1. remove dimensions
@@ -63,7 +68,7 @@ function get_jump(d::DimensionalJumpDiffusion)
         integrator.u = x
     end
     # TODO: Tempting to make all schedules f(schedule, u, p, t)?
-    rate_fn(u, p, t) = rate(d.jump_schedule, t)
+    rate_fn(u, p, t) = jump_rate(d.jump_schedule, t)
     return ConstantRateJump(rate_fn, affect!)
 end
 

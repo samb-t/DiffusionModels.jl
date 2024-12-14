@@ -1,12 +1,11 @@
 
-# TODO: Test for multiple dtypes
 @testitem "VP Noise Schedule Tests" setup = [SharedTestSetup] begin
     @testset "Test $(nameof(Schedule)){$(DType)}" for Schedule in [
             CosineSchedule, LinearSchedule, LinearMutualInfoSchedule
         ],
         DType in [Float32, Float64]
 
-        @test check_interface_implemented(AbstractGaussianNoiseSchedule, CosineSchedule)
+        @test check_interface_implemented(AbstractGaussianNoiseSchedule, Schedule)
 
         schedule = Schedule{DType}()
         # also test with vectorisation
@@ -52,5 +51,7 @@
 
         @test size(marginal_mean_coeff(schedule, t_vec)) == size(t_vec)
         @test size(marginal_std_coeff(schedule, t_vec)) == size(t_vec)
+
+        # TODO: test dtype of vector calls too
     end
 end

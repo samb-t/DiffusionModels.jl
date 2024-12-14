@@ -28,9 +28,13 @@ pages = [
             "api/gaussian_diffusion/score_parameterisations.md",
             "api/gaussian_diffusion/gaussian_diffusion.md",
         ],
-        "api/jump_diffusion.md",
+        "Jump Diffusion" => [
+            "api/jump_diffusion/jump_schedules.md",
+            "api/jump_diffusion/jump_diffusion.md",
+        ],
         "api/categorical_diffusion.md",
-    ]
+    ],
+    "Bibliography" => "bibliography.md",
 ]
 
 #! format: on
