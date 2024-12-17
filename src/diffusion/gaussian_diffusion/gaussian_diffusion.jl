@@ -15,9 +15,9 @@ trained with different objectives that result in higher sample quality or are
 more stable to optimise.
 
 `AbstractScoreParameterisation`s are used for the following reasons:
-- to define a `get_target` method that returns the target used in the training
+- to define a [`get_target`](@ref) method that returns the target used in the training
   objective.
-- to define a `ScoreFunction` that takes the model and the parameterisation
+- to define a [`ScoreFunction`](@ref) that takes the model and the parameterisation
   and returns the score.
 """
 abstract type AbstractScoreParameterisation <: AbstractModelParameterisation end
