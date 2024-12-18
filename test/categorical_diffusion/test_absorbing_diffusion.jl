@@ -11,4 +11,11 @@ end
     @test p_x_t isa AbstractArray{<:DiscreteNonParametric}
     @test rand.(p_x_t) isa AbstractArray
     @test size(rand.(p_x_t)) == size(x_start)
+
+    t_0 = zeros(size(t))
+    p_x_0 = marginal(diffusion_model, x_start, t_0)
+    @test all(rand.(p_x_0) .== x_start)
+    t_1 = ones(size(t))
+    p_x_1 = marginal(diffusion_model, x_start, t_1)
+    @test all(rand.(p_x_1) .== diffusion_model.mask_token)
 end

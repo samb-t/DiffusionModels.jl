@@ -25,8 +25,7 @@ function marginal(
     t::AbstractVector,
 ) where {S, D, M}
     a = marginal_mean_coeff(d.schedule, t)
-    # TODO: The [p, 1-p] might need to be the other way around
-    to_dist = (value, p) -> DiscreteNonParametric([d.mask_token, value], [p, 1-p])
+    to_dist = (value, p) -> DiscreteNonParametric([d.mask_token, value], [1-p, p])
     # Replicate `a` to match the dimensions of `x_start`
     a_expanded = reshape(a, ntuple(i -> 1, ndims(x_start)-1)..., size(a, 1))
     # Apply the distribution function to the entire array using broadcasting
