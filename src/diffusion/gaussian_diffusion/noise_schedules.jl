@@ -29,6 +29,14 @@ abstract type VPNoiseSchedule <: AbstractGaussianNoiseSchedule end
 # TODO: Add VENoiseSchedule docstring
 abstract type VENoiseSchedule <: AbstractGaussianNoiseSchedule end
 
+
+# Holy trait for ScheduleRateVariablity
+# defines if the beta function is constant or variable
+abstract type ScheduleVariabilityTrait end
+struct ConstantRateSchedule end
+struct VariableRateSchedule end
+
+
 @doc raw"""
     marginal_mean_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractFloat)
     marginal_mean_coeff(s::AbstractGaussianNoiseSchedule, t::AbstractVector)
@@ -266,6 +274,7 @@ end
 
 # TODO: Use beta in here instead?
 function log_snr(::CosineSchedule{T}, t::T) where {T<:AbstractFloat}
+    # TODO: Clip this. (Or do it in the marginal_mean_coeff etc. funcs?)
     return -2 * log(stable_tan(π * t / 2)) # + 2 * s.shift
 end
 
@@ -273,6 +282,9 @@ end
 function beta(::CosineSchedule{T}, t::T) where {T<:AbstractFloat}
     return π * stable_tan(π * t / 2)
 end
+
+# beta is a function of t
+ScheduleVariabilityTrait(::Type{CosineSchedule}) = VariableRateSchedule()
 
 @doc raw"""
     LinearSchedule{AbstractFloat}(beta_start::AbstractFloat=0.1, beta_end::AbstractFloat=20.0, clip_min::AbstractFloat=1e-9)
@@ -304,6 +316,9 @@ function beta(s::LinearSchedule{T}, t::T) where {T<:AbstractFloat}
     return s.beta_start + t * (s.beta_end - s.beta_start)
 end
 
+# beta is a function of t
+ScheduleVariabilityTrait(::Type{LinearSchedule}) = VariableRateSchedule()
+
 # Used in "On the Importance of Noise Scheduling for Diffusion Models"
 # This is also the schedule used in Absorbing Diffusion
 # Originally from "Deep unsuper-vised learning using nonequilibrium thermodynamics"
@@ -330,6 +345,10 @@ end
 function beta(::LinearMutualInfoSchedule{T}, t::T) where {T<:AbstractFloat}
     return 1 / (1 - t)
 end
+
+# beta is a function of t
+ScheduleVariabilityTrait(::Type{LinearMutualInfoSchedule}) = VariableRateSchedule()
+
 
 @kwdef struct SigmoidSchedule{T<:AbstractFloat} <: VPNoiseSchedule
     t_start::T = -3.0

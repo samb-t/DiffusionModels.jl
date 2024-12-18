@@ -234,8 +234,10 @@ function marginal(d::AbstractGaussianDiffusion, x_start::AbstractArray, t::Abstr
     std = repeat(std; outer=(size(x_start)[1:(end - 1)]..., 1))
 
     mean = mean_coeff .* x_start
-
-    return MdNormal(mean, std)
+    # NOTE: Could alternatively do Normal(mean, Diagonal(std))
+    # which is better? Perhaps map as it works for all dists
+    dist = map(Normal, mean, std)
+    return dist
 end
 
 """
@@ -261,7 +263,7 @@ function sample_prior(d::GaussianDiffusion{S}, dims::Tuple{N,Int}) where {S,N}
     # NOTE: This way the mean is actually very close to 0 but not quite for some schedules.
     # More of a schedule problem than this function though
     prior = marginal(d, ones(T, dims), ones(T, dims[end]))
-    sample = rand(prior)
+    sample = rand.(prior)
     return sample
 end
 # TODO: If all other functions are on AbstractGaussianDiffusion, this should be too.
@@ -334,7 +336,7 @@ end
 
 Sample from the Gaussian diffusion model using the specified `score_fn` and `alg`.
 """
-function sample(
+function sample_diffusion( # NOTE: To use sample, would need to use Distributions.sample
     d::AbstractGaussianDiffusion,
     score_fn::ScoreFunction{F,P},
     dims::NTuple{N,Int},
@@ -371,7 +373,7 @@ function denoising_loss_fn(
     t = rand(size(x, ndims(x))) .* (1.0 - eps) .+ eps
     marginal_dist = marginal(d, x, t)
     z = randn!(similar(x))
-    perturbed_data = marginal_dist.mean .+ marginal_dist.std .* z
+    perturbed_data = reparameterise.(marginal_dist, z)
 
     model = score_fn.model
     parameterisation = score_fn.parameterisation

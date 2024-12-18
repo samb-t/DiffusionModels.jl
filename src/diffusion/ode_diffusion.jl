@@ -26,8 +26,8 @@ struct VPFlow <: AbstractODEDiffusion
 end
 
 function marginal(
-    d::VPFlow, 
-    x_start::AbstractArray, 
+    d::VPFlow,
+    x_start::AbstractArray,
     t::AbstractVector,
 )
     shape = tuple([1 for _ in 1:ndims(x_start)-1]..., length(t))
@@ -35,7 +35,7 @@ function marginal(
     mean = sqrt.(alpha_cumulative(d.schedule, t)) .* x_start
     std = sqrt.(1 .- alpha_cumulative(d.schedule, t))
     std = repeat(std, outer=(size(mean)[1:end-1]..., 1))
-    return rand(MdNormal(mean, std))
+    return rand.(map(Normal, mean, std))
     # TODO: Also need to add sigma_min * noise here
 end
 
@@ -45,14 +45,13 @@ function conditional_vector_field()
 
 end
 
-# Also possible to define for arbitrary start/end densities. 
+# Also possible to define for arbitrary start/end densities.
 # In this case
 # function marginal(
-#     d::VPFlow, 
-#     x_start::AbstractArray, 
-#     x_end::AbstractArray, 
+#     d::VPFlow,
+#     x_start::AbstractArray,
+#     x_end::AbstractArray,
 #     t::AbstractVector,
 # )
 
 # end
-

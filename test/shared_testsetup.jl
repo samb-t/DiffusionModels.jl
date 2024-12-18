@@ -4,6 +4,7 @@
     using JET
     using RequiredInterfaces: check_interface_implemented
     using Random
+    using Distributions
     using Statistics
     using SciMLBase
     using StochasticDiffEq

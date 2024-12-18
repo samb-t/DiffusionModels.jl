@@ -13,17 +13,26 @@
 """
     Absorbing Diffusion Models
 """
-struct AbsorbingDiffusion{S,D,M} <: AbstractDiscreteDiffusion where {D<:NTuple{N,Int},M<:Integer} where N
+struct AbsorbingDiffusion{S,D,M} <: AbstractCategoricalDiffusion where {D<:NTuple{N,Int},M<:Integer} where N
     schedule::S
     dims::D
     mask_token::M
 end
 
-# For both discrete and continuous time, decide approximately how many
-# changes have taken place by this time, and make that many changes
-function marginal()
+function marginal(
+    d::AbsorbingDiffusion{S, D, M},
+    x_start::AbstractArray{M},
+    t::AbstractVector,
+) where {S, D, M}
+    a = marginal_mean_coeff(d.schedule, t)
+    # TODO: The [p, 1-p] might need to be the other way around
+    to_dist = (value, p) -> DiscreteNonParametric([d.mask_token, value], [p, 1-p])
+    # Replicate `a` to match the dimensions of `x_start`
+    a_expanded = reshape(a, ntuple(i -> 1, ndims(x_start)-1)..., size(a, 1))
+    # Apply the distribution function to the entire array using broadcasting
+    dist = to_dist.(x_start, a_expanded)
+    return dist
 end
-
 
 struct Exact end
 
@@ -31,7 +40,10 @@ struct Approximate
     num_jumps::Int
 end
 
-function affect!(integrator, d::AbsorbingDiffusion)
+function affect!(
+    integrator,
+    d::AbsorbingDiffusion{S,D,M},
+) where {S,D,M}
     x = integrator.u
     x_shape = size(x)
     other_dims = setdiff(1:ndims(x), d.dims)
@@ -48,10 +60,21 @@ function affect!(integrator, d::AbsorbingDiffusion)
     end
 end
 
+# Holy trait for ScheduleVariabilityTrait
 function get_jump(
-    d::AbsorbingDiffusion{S},
+    d::AbsorbingDiffusion{S,D,M},
     ::Exact,
-) where S <: AbstractConstantRateSchedule
+) where {S,D,M}
+    return get_jump(
+        d, Exact(), ScheduleVariabilityTrait(S)
+    )
+end
+
+function get_jump(
+    d::AbsorbingDiffusion{S,D,M},
+    ::Exact,
+    ::ConstantRateSchedule,
+) where {S,D,M}
     affect_fn!(integrator) = affect!(integrator, d)
     # NOTE: jump_rate should probably be `beta`
     rate_fn(u, p, t) = jump_rate(d.jump_schedule, t)
@@ -59,9 +82,10 @@ function get_jump(
 end
 
 function get_jump(
-    d::AbsorbingDiffusion{S},
+    d::AbsorbingDiffusion{S,D,M},
     ::Exact,
-) where S <: AbstractVariableRateSchedule
+    ::VariableRateSchedule,
+) where {S,D,M}
     affect_fn!(integrator) = affect!(integrator, d)
     # NOTE: jump_rate should probably be `beta`
     rate_fn(u, p, t) = jump_rate(d.jump_schedule, t)
@@ -69,9 +93,9 @@ function get_jump(
 end
 
 function get_jump(
-    d::AbsorbingDiffusion,
+    d::AbsorbingDiffusion{S,D,M},
     approximation::Approximate,
-)
+) where {S,D,M}
     throw(NotImplementedError())
     c(du, u, p, t, counts, mark) = begin
         # calculates the update given `counts` number of jumps for each
@@ -85,7 +109,7 @@ function get_jump(
 end
 
 function get_forward_diffeq(
-    d::AbstractDiscreteDiffusion,
+    d::AbstractCategoricalDiffusion,
     x::AbstractArray{Integer},
     tspan::Tuple{AbstractFloat, AbstractFloat};
     aggregator=Direct(),

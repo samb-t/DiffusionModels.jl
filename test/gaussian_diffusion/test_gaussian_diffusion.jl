@@ -79,9 +79,8 @@ end
 
 @testitem "Test marginal(::GaussianDiffusion, ...)" setup=[SharedTestSetup, GaussianDiffusionSetup] begin
     p_x_t = marginal(diffusion_model, x_start, t)
-    @test p_x_t isa MdNormal
-    @test size(mean(p_x_t)) == size(x_start)
-    @test size(rand(p_x_t)) == size(x_start)
+    @test p_x_t isa AbstractArray{<:Normal, N} where N
+    @test size(rand.(p_x_t)) == size(x_start)
     # JET
     if JET_TESTING_ENABLED
         @test_opt target_modules=(DiffusionModels,) marginal(diffusion_model, x_start, t)
@@ -150,6 +149,7 @@ end
     @test size(sol.u[end]) == size(x_start)
     # There will be an arror depending on dt, so we pick a fairly large atol
     @test sol.u[end] ≈ x_start atol=0.005
+    # TODO: Check that there are no NaNs, Infs, etc. in the solution
 
     # Run JET on solving
     if JET_TESTING_ENABLED
@@ -158,17 +158,17 @@ end
     end
 end
 
-@testitem "Test sample(::GaussianDiffusion, ...)" setup=[SharedTestSetup, GaussianDiffusionSetup] begin
+@testitem "Test sample_diffusion(::GaussianDiffusion, ...)" setup=[SharedTestSetup, GaussianDiffusionSetup] begin
     alg = EM()
     score_fn = ScoreFunction((x,p,t) -> x, NoiseScoreParameterisation(schedule))
-    sol = sample(diffusion_model, score_fn, size(x_start), alg, dt=1e-3)
+    sol = sample_diffusion(diffusion_model, score_fn, size(x_start), alg, dt=1e-3)
     @test sol isa RODESolution
     @test size(sol.u[end]) == size(x_start)
 
     # JET
     if JET_TESTING_ENABLED
-        @test_opt target_modules=(DiffusionModels,) sample(diffusion_model, score_fn, size(x_start), alg, dt=1e-3)
-        @test_call broken=true sample(diffusion_model, score_fn, size(x_start), alg, dt=1e-3)
+        @test_opt target_modules=(DiffusionModels,) sample_diffusion(diffusion_model, score_fn, size(x_start), alg, dt=1e-3)
+        @test_call broken=true sample_diffusion(diffusion_model, score_fn, size(x_start), alg, dt=1e-3)
     end
 end
 

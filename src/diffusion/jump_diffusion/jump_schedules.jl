@@ -26,7 +26,7 @@ A jump schedule where the rate function is constant with respect to time. [campb
 """
 @kwdef struct ConstantJumpSchedule{T<:AbstractFloat} <: AbstractJumpSchedule
     max_dim::Int
-    minimum_dims::Int = 1
+    minimum_dims::Int
     std_mult::T = 0.7
 end
 
@@ -40,12 +40,16 @@ function jump_rate(s::ConstantJumpSchedule{T}, ::T) where {T<:AbstractFloat}
     return (2 * c + s.std_mult^2 + sqrt((s.std_mult^2 + 2 * c)^2 - 4 * c^2)) / 2
 end
 
+beta(s::ConstantJumpSchedule, t::T) where {T<:AbstractFloat} = jump_rate(s, t)
+
 # Call this `expected_cumulative_jumps`?
 @doc raw"""
     jump_rate_integral(schedule::ConstantJumpSchedule, t::AbstractFloat)
 
 Return the expected number of jumps up to time `t`.
 """
-function jump_rate_integral(s::ConstantJumpSchedule, t::AbstractFloat)
+function jump_rate_integral(s::ConstantJumpSchedule{T}, t::T) where {T<:AbstractFloat}
     return jump_rate(s, t) * t
 end
+
+ScheduleVariabilityTrait(::Type{ConstantJumpSchedule}) = ConstantRateSchedule()

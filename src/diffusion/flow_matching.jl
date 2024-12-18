@@ -1,7 +1,7 @@
 abstract type AbstractCFM <: AbstractDiffusion end
 
 # TODO: Generalise LinearCFM to any CFM.
-# TODO: Make CFM abstract, and allow specific 
+# TODO: Make CFM abstract, and allow specific
 #       instantiations with different numbers of points.
 #       To start with just any two, and anything to Gaussian.
 
@@ -10,21 +10,21 @@ struct LinearCFM{T<:AbstractFloat} <: AbstractCFM
 end
 
 function marginal(
-    d::LinearCFM, 
-    x_start::AbstractArray, 
-    x_end::AbstractArray, 
+    d::LinearCFM,
+    x_start::AbstractArray,
+    x_end::AbstractArray,
     t::AbstractVector,
 )
     shape = tuple([1 for _ in 1:ndims(x_start)-1]..., length(t))
     t = reshape(t, shape)
     mean = t .* x_start .+ (1 .- t) .* x_end
-    return MdNormal(mean, d.sigma)
+    return map(Normal, mean, d.sigma)
 end
 
 function conditional_vector_field(
     d::LinearCFM,
-    x_start::AbstractArray, 
-    x_end::AbstractArray, 
+    x_start::AbstractArray,
+    x_end::AbstractArray,
     t::AbstractVector,
     x_t::AbstractArray
 )
@@ -33,8 +33,8 @@ end
 
 function loss(
     d::LinearCFM,
-    x_start::AbstractArray, 
-    x_end::AbstractArray, 
+    x_start::AbstractArray,
+    x_end::AbstractArray,
     t::AbstractVector,
 )
     eps = randn!(similar(x_start))
@@ -94,9 +94,9 @@ struct ExactOptimalTransportCFM{T<:AbstractFloat} <: AbstractCFM
 end
 
 function marginal(
-    d::ExactOptimalTransportCFM, 
-    x_start::AbstractArray, 
-    x_end::AbstractArray, 
+    d::ExactOptimalTransportCFM,
+    x_start::AbstractArray,
+    x_end::AbstractArray,
     t::AbstractVector,
 )
     # shape = tuple([1 for _ in 1:ndims(x_start)-1]..., length(t))
@@ -107,8 +107,8 @@ end
 
 function conditional_vector_field(
     d::ExactOptimalTransportCFM,
-    x_start::AbstractArray, 
-    x_end::AbstractArray, 
+    x_start::AbstractArray,
+    x_end::AbstractArray,
     t::AbstractVector,
 )
     # return x_end .- x_start
@@ -116,11 +116,11 @@ end
 
 
 
-function reparameterise_rand(
-    d::MdNormal
-)
-    ...
-end
+# function reparameterise_rand(
+#     d::
+# )
+#     ...
+# end
 
 
 # function marginal(d::CFM, x_start::AbstractArray, x_end::AbstractArray, t::AbstractVector)

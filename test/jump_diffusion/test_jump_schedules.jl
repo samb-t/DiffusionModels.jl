@@ -6,7 +6,7 @@
 
         @test check_interface_implemented(AbstractJumpSchedule, Schedule)
 
-        schedule = Schedule{DType}(max_dim=10)
+        schedule = Schedule{DType}(max_dim=10, minimum_dims=1)
         # also test with vectorisation
         t_vec = rand(Xoshiro(0), DType, 3)
         t = DType(0.3)

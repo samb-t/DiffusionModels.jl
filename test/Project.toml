@@ -1,5 +1,6 @@
 [deps]
 DiffusionModels = "e6f4c133-6073-45d8-99fb-465e9f65e59c"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 RequiredInterfaces = "97f35ef4-7bc5-4ec1-a41a-dcc69c7308c6"
