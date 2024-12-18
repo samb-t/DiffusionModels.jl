@@ -266,12 +266,12 @@ end
 
 # TODO: Use beta in here instead?
 function log_snr(::CosineSchedule{T}, t::T) where {T<:AbstractFloat}
-    return -2 * log(tan(π * t / 2)) # + 2 * s.shift
+    return -2 * log(stable_tan(π * t / 2)) # + 2 * s.shift
 end
 
 # TODO: use shift in here
 function beta(::CosineSchedule{T}, t::T) where {T<:AbstractFloat}
-    return π * tan(π * t / 2)
+    return π * stable_tan(π * t / 2)
 end
 
 @doc raw"""

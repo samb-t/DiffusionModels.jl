@@ -76,6 +76,8 @@ module DiffusionModels
 
     include("diffusion/base.jl")
 
+    include("diffusion/utils.jl")
+
     include("diffusion/gaussian_diffusion/noise_schedules.jl")
     include("diffusion/gaussian_diffusion/gaussian_diffusion.jl")
 

@@ -31,7 +31,7 @@ struct Approximate
     num_jumps::Int
 end
 
-function affect!(d::AbsorbingDiffusion, integrator)
+function affect!(integrator, d::AbsorbingDiffusion)
     x = integrator.u
     x_shape = size(x)
     other_dims = setdiff(1:ndims(x), d.dims)
@@ -41,7 +41,7 @@ function affect!(d::AbsorbingDiffusion, integrator)
 
     # 1. sample the index to absorb
     indices = rand(1:size(x, 1), other_dims)
-    # 2. scatter in the mask token in the indices locations. Hack for now
+    # 2. scatter in the mask token at locations specified by indices. Hack for now
     for k in CartesianIndices(indices)
         index = indices[k]
         x[index, k] .= d.mask_token
@@ -52,7 +52,8 @@ function get_jump(
     d::AbsorbingDiffusion{S},
     ::Exact,
 ) where S <: AbstractConstantRateSchedule
-    affect_fn!(integrator) = affect!(d, integrator)
+    affect_fn!(integrator) = affect!(integrator, d)
+    # NOTE: jump_rate should probably be `beta`
     rate_fn(u, p, t) = jump_rate(d.jump_schedule, t)
     return ConstantJump(rate_fn, affect_fn!)
 end
@@ -61,7 +62,8 @@ function get_jump(
     d::AbsorbingDiffusion{S},
     ::Exact,
 ) where S <: AbstractVariableRateSchedule
-    affect_fn!(integrator) = affect!(d, integrator)
+    affect_fn!(integrator) = affect!(integrator, d)
+    # NOTE: jump_rate should probably be `beta`
     rate_fn(u, p, t) = jump_rate(d.jump_schedule, t)
     return VariableJump(rate_fn, affect_fn!)
 end
